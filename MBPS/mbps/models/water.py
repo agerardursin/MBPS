@@ -9,8 +9,8 @@ Class for soil water model
 """
 import numpy as np
 
-from MBPS.mbps.classes.module import Module
-from MBPS.mbps.functions.integration import fcn_euler_forward
+from mbps.classes.module import Module
+from mbps.functions.integration import fcn_euler_forward
 
 class Water(Module):
     ''' 
@@ -183,43 +183,94 @@ class Water(Module):
         
         # -- Supporting equations
         ### TODO: Define all necessary supporting equations
+        
         # Runoff equation
+        
+        f_Ru = np.minimum(_f_prc-0.2*S,0)**2/(_f_prc + 0.8*S)
+        
+        """
         f_Ru = []
-        for prc in _f_prc:
+        for prc in f_prc:
             fru = (prc-0.2*S)**2/(prc + 0.8*S)
             if prc <= 0.2*S:
                 f_Ru.append(0)
             else:
                 f_Ru.append(fru)
-        #effective precipitation
+        """
+        """
+        if f_prc > 0.2*S:
+            f_Ru = (f_prc-0.2*S)**2/(f_prc + 0.8*S)
+        else:
+            f_Ru = 0
+        """
+        #Effective precipitation
         f_Pe = _f_prc - f_Ru
 
         #Evapotranspiration
-        Rn = 0.408 * _I_glb * (1 - alb)
-        delta = (5304/(T+273)**2) * np.exp(21.3 - 5304/(T+273))
-
-        ET_0 = alpha * Rn * delta / (delta + gamma)
-        ET_p = kcrop * ET_0
+        Rn = 0.408 * _I_glb * (1 - alb)    # [J m-2 d-1] net radiation
+        delta = (5304/(_T+273)**2) * np.exp(21.3 - 5304/(_T+273))    #[mbar degrees C-1] slope of p_sat_vap at T_env
+        ET_0 = alpha * Rn * delta / (delta + gamma)     # [mm d-1] reference evapotranspiration
+        ET_p = kcrop * ET_0        # [mm d-1] Evapotranspiration potential
 
         #Transpiration
-        k_tr = 1 - np.exp(-0.6*_LAI)
-        T_p = k_tr*ET_p
+        WAI1 = max((L1/D1 - theta_pwp1), 0)/(theta_fc1-theta_pwp1) # [-] Water availability index of layer 1
+        WAI2 = max((L2/D2 - theta_pwp2), 0)/(theta_fc2-theta_pwp2)
+        WAI3 = max((L3/D3 - theta_pwp3), 0)/(theta_fc3-theta_pwp3)
+        
+        #k_rt1
+        if WAI1 < WAIc:
+            k_rt1 = WAI1 / WAIc
+        else: 
+            k_rt1 = 1                    # [-] restriction of transpiration by soil
+       #k_rt2
+        if WAI2 < WAIc:
+            k_rt2 = WAI2 / WAIc
+        else: 
+            k_rt2 = 1  
+            
+        #k_rt3
+        if WAI3 < WAIc:
+            k_rt3 = WAI3 / WAIc
+        else: 
+            k_rt3 = 1  
+        
+        k_ra = 0.0408 *np.exp(0.19*(_T))    # [-] root activity
+        k_tr = 1 - np.exp(-0.6*_LAI)     # [-] transpiration fraction from ETp   
+        T_p = k_tr*ET_p                  # [mm d-1] potential transpiration
+        
+        f_Tr1 = k_rt1 * k_ra * krf1 * T_p
+        f_Tr2 = k_rt2 * k_ra * krf2 * T_p
+        f_Tr3 = k_rt3 * k_ra * krf3 * T_p
+        
 
-        f_Tr1 =
-        f_Tr2 =
-        f_Tr3 =
-        f_Ev =
-        f_Dr1 =
-        f_Dr2 =
-        f_Dr3 =
-        f_Irg =
+        # Evaporation
+        Ep = np.minimum((ET_p-T_p), (ET_p*(1-mlc)))    #[mm d-1] Evaporation potential
+        f_Ev = Ep / np.sqrt(DSD)    # [mm d-1] Evaporation
+
+        #Drainage layer 1
+        if L1 > theta_fc1*D1:
+            f_Dr1 = L1-theta_fc1*D1
+        else:
+            f_Dr1 = 0
+            
+        #Drainage layer 2
+        if L2 > theta_fc2*D2:
+            f_Dr2 = L2-theta_fc2*D2
+        else:
+            f_Dr2 = 0
+            
+        #Drainage layer 3
+        if L3 > theta_fc3*D3:
+            f_Dr3 = L3-theta_fc3*D3
+        else:
+            f_Dr3 = 0
 
         # -- Differential equations [mm d-1]
         ### TODO: define the differential equations
         ### (use the flow names indicated below)
-        dL1_dt = ???
-        dL2_dt = ???
-        dL3_dt = ???
+        dL1_dt = f_Pe - f_Tr1 - f_Ev - f_Dr1
+        dL2_dt = f_Dr1 - f_Tr2 - f_Dr2
+        dL3_dt = f_Dr2 - f_Tr3 - f_Dr3
         dDSD_dt = 1 - (f_Pe >= 1.5*Ep)*DSD
         
         # Store flows
