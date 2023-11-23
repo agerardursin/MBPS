@@ -11,6 +11,9 @@ Tutorial: Soil water model analysis.
 # TODO: import the required packages
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.integrate import solve_ivp
+from scipy.interpolate import interp1d
+from scipy.optimize import least_squares
 
 # TODO: specify the matplotlib style
 plt.style.use('ggplot')
@@ -36,28 +39,46 @@ Rn = 0.408*Irr_gl*1-(alb)  # [MJ m-2 d-1] Net radiation
 # Model equations
 # TODO: Define variables for the model
 # Exercise 1. Pvs, Delta
-Pvs = np.exp(21.3 - 5304/(T+273.0))
-delta = (7304/(T+273)**2) * np.exp(21.3 - 7304/(T+273))#(5304/(T+273)**2) * np.exp(21.3 - 5304/(T+273))
+def Pvs(p0):
+    cnst = p0
+    Pvs_out = np.exp(21.3 - 5304/(T+273.0))
+    Pvs_out += cnst
+    return Pvs_out
+
+def fcn_residuals(p0):
+    pvs = Pvs(p0)
+    f_interp = interp1d(T,pvs)
+    pvs_k = f_interp(T_data)
+    err = Pvs_data - pvs_k
+    return err
+
+delta = (5304/(T+273)**2) * np.exp(21.3 - 5304/(T+273))
 # it = 0
 rel_error = 0
 # rel_error = np.empty([1, 4])
-for i in range(0, T.size):
-    if T[i] < T_data[0]:
-        Pvs[i] += cnst[0] * (T[i]/T_data[0])
-    elif T_data[0] <= T[i] < T_data[1]:
-        Pvs[i] += (cnst[0] * (T_data[0]/T[i]) + cnst[1] * (T[i]/T_data[1]))*0.5
-    elif T_data[1] <= T[i] < T_data[2]:
-        Pvs[i] += (cnst[1] * (T_data[1]/T[i]) + cnst[2] * (T[i]/T_data[2]))*0.5
-    elif T_data[2] <= T[i] < T_data[3]:
-        Pvs[i] += (cnst[2] * (T_data[2]/T[i]) + cnst[3] * (T[i]/T_data[3]))*0.5
-    else:
-        Pvs[i] += cnst[3] * (T[i]/T_data[3])
-    if np.isin(T[i],T_data):
-        idx = np.asarray(np.where(T_data == T[i]))
-        ind = idx[0][0]
-        rel_error += (Pvs_data[ind] - Pvs[i])/Pvs_data[ind]
-T += 273
-rel_error = rel_error/4
+# for i in range(0, T.size):
+#     if T[i] < T_data[0]:
+#         Pvs[i] += cnst[0] * (T[i]/T_data[0])
+#     elif T_data[0] <= T[i] < T_data[1]:
+#         Pvs[i] += (cnst[0] * (T_data[0]/T[i]) + cnst[1] * (T[i]/T_data[1]))*0.5
+#     elif T_data[1] <= T[i] < T_data[2]:
+#         Pvs[i] += (cnst[1] * (T_data[1]/T[i]) + cnst[2] * (T[i]/T_data[2]))*0.5
+#     elif T_data[2] <= T[i] < T_data[3]:
+#         Pvs[i] += (cnst[2] * (T_data[2]/T[i]) + cnst[3] * (T[i]/T_data[3]))*0.5
+#     else:
+#         Pvs[i] += cnst[3] * (T[i]/T_data[3])
+#     if np.isin(T[i],T_data):
+#         idx = np.asarray(np.where(T_data == T[i]))
+#         ind = idx[0][0]
+#         rel_error += (Pvs_data[ind] - Pvs[i])/Pvs_data[ind]
+p0 = cnst[0]
+
+y_lsq = least_squares(fcn_residuals,p0)
+cnst_hat = y_lsq['x']
+pvs_hat = Pvs(cnst_hat)
+res = y_lsq['fun']
+cost = y_lsq['cost']
+# rel_error = rel_error/4
 # Exercise 2. ET0
 ET0 = alpha*Rn*delta/(delta+gamma)
 
@@ -66,12 +87,17 @@ ET0 = alpha*Rn*delta/(delta+gamma)
 # Tip: The numpy functions np.isin() or np.where() can help you retrieve the
 # modelled values for Pvs at the corresponding value for T_data.
 T_data_plt = [(x + 273.0) for x in T_data]
+T += 273
+
+np.set_printoptions(formatter={'float_kind':'{:.3E}'.format})
+print('Residuals \n {} \n'.format(res))
+print('Cost \n {} \n'.format(cost))
 
 # Figures
 # TODO: Make the plots
 # Exercise 1. Pvs vs. T and Delta vs. T,
 fig, (ax1, ax2,ax3) = plt.subplots(1, 3)
-ax1.plot(T,Pvs,label='$P^{sat}_{vap}$')
+ax1.plot(T,pvs_hat,label='$P^{sat}_{vap}$')
 ax1.plot(T_data_plt,Pvs_data,'o',label='$P^{sat}_{data}$')
 ax1.set_xlabel(r'$Temperature\ [K]$')
 ax1.set_ylabel(r'$Saturation Vapor Pressure\ [mbar]$')
