@@ -3,7 +3,7 @@
 FTE34806 - Modelling of Biobased Production Systems
 MSc Biosystems Engineering, WUR
 
-@authors:   -- write your team names --
+@authors:   Nynke - write your team names --
 
 Class for soil water model
 """
