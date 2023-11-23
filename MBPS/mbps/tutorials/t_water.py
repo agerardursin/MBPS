@@ -37,7 +37,7 @@ Rn = 0.408*Irr_gl*1-(alb)  # [MJ m-2 d-1] Net radiation
 # TODO: Define variables for the model
 # Exercise 1. Pvs, Delta
 Pvs = np.exp(21.3 - 5304/(T+273.0))
-delta = (5304/(T+273)**2) * np.exp(21.3 - 5304/(T+273))
+delta = (7304/(T+273)**2) * np.exp(21.3 - 7304/(T+273))#(5304/(T+273)**2) * np.exp(21.3 - 5304/(T+273))
 # it = 0
 rel_error = 0
 # rel_error = np.empty([1, 4])
@@ -59,19 +59,20 @@ for i in range(0, T.size):
 T += 273
 rel_error = rel_error/4
 # Exercise 2. ET0
-
+ET0 = alpha*Rn*delta/(delta+gamma)
 
 # Relative error
 # TODO: Calculate the average relative error
 # Tip: The numpy functions np.isin() or np.where() can help you retrieve the
 # modelled values for Pvs at the corresponding value for T_data.
-
+T_data_plt = [(x + 273.0) for x in T_data]
 
 # Figures
 # TODO: Make the plots
 # Exercise 1. Pvs vs. T and Delta vs. T,
-fig, (ax1, ax2) = plt.subplots(1, 2)
+fig, (ax1, ax2,ax3) = plt.subplots(1, 3)
 ax1.plot(T,Pvs,label='$P^{sat}_{vap}$')
+ax1.plot(T_data_plt,Pvs_data,'o',label='$P^{sat}_{data}$')
 ax1.set_xlabel(r'$Temperature\ [K]$')
 ax1.set_ylabel(r'$Saturation Vapor Pressure\ [mbar]$')
 ax1.set_title(r'$P^{sat}_{vap}\ vs\ Temperature$')
@@ -81,6 +82,11 @@ ax2.set_xlabel(r'$Temperature\ [K]$')
 ax2.set_ylabel(r'$\delta\ [mbar\ K^{-1}]$')
 ax2.set_title(r'$\delta\ vs\ Temperature$')
 ax2.legend()
+ax3.plot(T,delta,label='$ET_{0}$')
+ax3.set_xlabel(r'$Temperature\ [K]$')
+ax3.set_ylabel(r'$ET_{0}\ [mm\ d^{-1}]$')
+ax3.set_title(r'$ET_{0}\ vs\ Temperature$')
+ax3.legend()
 plt.show()
 
 # Exercise 2. ET0 vs. T
