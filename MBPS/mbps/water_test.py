@@ -21,7 +21,7 @@ dt = 1
 
 # Initial conditions
 # TODO: define the dictionary of initial conditions
-x0 = {'L1': 40, 'L2':5, 'L3': 0, 'DSD':8}
+x0 = {'L1': 25, 'L2':40, 'L3': 60, 'DSD':15}
 
 # Castellaro et al. 2009, and assumed values for soil types and layers
 # Define the dictonary of parameter values
@@ -51,10 +51,10 @@ p = {'S':10,                   # [mm d-1] parameter of precipitation retention
 # global irradiance [J m-2 d-1], environment temperature [°C], 
 # precipitation [mm d-1], leaf area index [-]
 # TODO: Define sensible constant values for the disturbances
-d = {'I_glb':np.array([tsim, np.full((tsim.size,), 300)]).T,
+d = {'I_glb':np.array([tsim, np.full((tsim.size,), 10000000)]).T,
      'T':np.array([tsim, np.full((tsim.size,), 20)]).T,   
-     'f_prc':np.array([tsim, np.full((tsim.size,), 7)]).T,
-     'LAI':np.array([tsim, np.full((tsim.size,), 4)]).T
+     'f_prc':np.array([tsim, np.full((tsim.size,), 2)]).T,
+     'LAI':np.array([tsim, np.full((tsim.size,), 0.65)]).T
      }
 
 # Controlled inputs
@@ -74,15 +74,65 @@ L1 = y_water['L1']
 L2 = y_water['L2']
 L3 = y_water['L3']
 
+fc1 = np.full(len(tsim), (p['theta_fc1'] * p['D1']))
+fc2 = np.full(len(tsim), (p['theta_fc2'] * p['D2']))
+fc3 = np.full(len(tsim), (p['theta_fc3'] * p['D3']))
+
+pwp1 = np.full(len(tsim), (p['theta_pwp1'] * p['D1']))
+pwp2 = np.full(len(tsim), (p['theta_pwp2'] * p['D2']))
+pwp3 = np.full(len(tsim), (p['theta_pwp3'] * p['D3']))
+
 # Plots
 # TODO: Plot the state variables, (as L and theta) and flows.
 # Include lines for the fc and pwp for each layer.
 plt.figure(1)
-plt.plot(t_water, L1, label = 'L1')
-plt.plot(t_water, L2, label = 'L2')
-plt.plot(t_water, L3, label = 'L3')
+plt.plot(t_water, L1, label = 'L1', color = 'g')
+plt.plot(t_water, L2, label = 'L2', color = 'b')
+plt.plot(t_water, L3, label = 'L3', color = 'r')
+plt.plot(t_water, fc1, label = 'fc1', linestyle = 'dashed', color = 'g')
+plt.plot(t_water, fc2, label = 'fc2', linestyle = 'dashed', color = 'b')
+plt.plot(t_water, fc3, label = 'fc3', linestyle = 'dashed', color = 'r')
+plt.plot(t_water, pwp1, label = 'pwp1', linestyle = 'dashdot', color = 'g')
+plt.plot(t_water, pwp2, label = 'pwp2', linestyle = 'dashdot', color = 'b')
+plt.plot(t_water, pwp3, label = 'pwp3', linestyle = 'dashdot', color = 'r')
 plt.xlabel("t_water")
-plt.ylabel('L')
+plt.ylabel('soil water [mm]')
+plt.legend(loc='upper right')
+
+plt.figure(2)
+plt.plot(t_water, L1/p['D1'], label = 'theta1', color ='g')
+plt.plot(t_water, L2/p['D2'], label = 'theta2', color ='b')
+plt.plot(t_water, L3/p['D3'], label = 'theta3', color ='r')
+plt.plot(t_water, fc1/p['D1'], label = 'fc1', linestyle = 'dashed', color = 'g')
+plt.plot(t_water, fc2/p['D2'], label = 'fc2', linestyle = 'dashed', color = 'b')
+plt.plot(t_water, fc3/p['D3'], label = 'fc3', linestyle = 'dashed', color = 'r')
+plt.plot(t_water, pwp1/p['D1'], label = 'pwp1', linestyle = 'dashdot', color = 'g')
+plt.plot(t_water, pwp2/p['D2'], label = 'pwp2', linestyle = 'dashdot', color = 'b')
+plt.plot(t_water, pwp3/p['D3'], label = 'pwp3', linestyle = 'dashdot', color = 'r')
+plt.xlabel("t_water")
+plt.ylabel('volume fraction [-]')
 plt.legend()
 
+plt.figure(3)
+plt.plot(t_water, water.f['f_Pe'], label = 'f_Pe')
+plt.plot(t_water, water.f['f_Ev']*-1, label = 'f_Ev')
+plt.plot(t_water, water.f['f_Irg'], label = 'f_Irg')
+plt.plot(t_water, water.f['f_Tr1']*-1, label = 'f_Tr1')
+plt.plot(t_water, water.f['f_Dr1']*-1, label = 'f_Dr1')
+plt.legend(loc='upper right')
+plt.xlabel('time [d]')
+plt.ylabel('flow rate [mm d-1]')
 
+plt.figure(4)
+plt.plot(t_water, water.f['f_Tr2']*-1, label = 'f_Tr2')
+plt.plot(t_water, water.f['f_Dr2']*-1, label = 'f_Dr2')
+plt.legend()
+plt.xlabel('time [d]')
+plt.ylabel('flow rate [mm d-1]')
+
+plt.figure(5)
+plt.plot(t_water, water.f['f_Tr3']*-1, label = 'f_Tr3')
+plt.plot(t_water, water.f['f_Dr3']*-1, label = 'f_Dr3')
+plt.legend()
+plt.xlabel('time [d]')
+plt.ylabel('flow rate [mm d-1]')
