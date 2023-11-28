@@ -8,9 +8,12 @@ MSc Biosystems Engineering, WUR
 Class for grass growth model from Grasim
 """
 import numpy as np
+import sys
+sys.path.append('../mbps/classes/')
+sys.path.append('../mbps/functions/')
 
-from MBPS.mbps.classes.module import Module
-from MBPS.mbps.functions.integration import fcn_euler_forward
+from classes.module import Module
+from functions.integration import fcn_euler_forward
 
 class Grass(Module):
     ''' 

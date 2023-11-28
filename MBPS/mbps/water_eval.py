@@ -17,13 +17,16 @@ NOTE: To change the simulation from 1[d] to 1[hr] time step:
     4) comment out daily weather data, and uncomment hourly weather data
     5) change temperature string from 'TG' to 'T':
         T = data_weather.loc[t_ini:t_end,'T'].values
+
+    Data does not look completely correct, oscillations when L1 = field capacity -> this should be runoff
+    TODO: Compare with provided code
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from mbps.models.water import Water
+from models.water import Water
 
 plt.style.use('ggplot')
 

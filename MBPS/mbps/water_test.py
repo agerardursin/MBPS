@@ -10,7 +10,7 @@ Initial test of the soil water model
 import numpy as np
 import matplotlib.pyplot as plt
 
-from mbps.models.water import Water
+from MBPS.mbps.models.water import Water
 
 plt.style.use('ggplot')
 
@@ -136,3 +136,4 @@ plt.plot(t_water, water.f['f_Dr3']*-1, label = 'f_Dr3')
 plt.legend()
 plt.xlabel('time [d]')
 plt.ylabel('flow rate [mm d-1]')
+plt.show()

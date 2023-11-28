@@ -2,21 +2,32 @@
 """
 FTE34806 - Modelling of Biobased Production Systems
 MSc Biosystems Engineering, WUR
-
-@authors:   Nynke - write your team names --
+@authors:   Daniel Reyes Lastiri, Stefan Maranus,
+            Rachel van Ooteghem, Tim Hoogstad
 
 Class for soil water model
 """
 import numpy as np
-
-from MBPS.mbps.classes.module import Module
-from MBPS.mbps.functions.integration import fcn_euler_forward
+import sys
+sys.path.append('../mbps/classes/')
+sys.path.append('../mbps/functions/')
+from classes.module import Module
+from functions.integration import fcn_euler_forward
 
 class Water(Module):
     ''' 
     Water balance in soil as modelled by Castellaro et al. (2010).
     Model description in [mm] for water volume, and [d] for time.
-        
+    
+    Assumptions
+    -----------
+    * 3 layers of soil
+    * Priestley-Taylor model for reference evapotranspiration
+    * Model for dPvap,sat/dT follows equation provided (unknown source)
+    * Albedo is constant and represents average crop-soil
+    * mulch cover is constant
+    * Initial conditions L0 must be in the range [pwp,fc]
+    
     Parameters
     ----------
     t : array
@@ -136,14 +147,14 @@ class Water(Module):
                        'f_Ev', 'f_Dr1', 'f_Dr2', 'f_Dr3', 'f_Irg')
         for k in self.f_keys:
             self.f[k] = np.full((self.t.size,), np.nan)
-
-
+    
     def diff(self, _t, _x0):
         # -- State variables (initial conditions)
         L1 = _x0[0]     # [mm] Water in soil layer 1
         L2 = _x0[1]     # [mm] Water in soil layer 2
         L3 = _x0[2]     # [mm] Water in soil layer 3
         DSD = _x0[3]    # [d] Days since damping
+        L_arr = np.array([L1,L2,L3])
         
         # -- Parameters
         S = self.p['S']           # [mm d-1] parameter of precipitation retention
@@ -182,111 +193,88 @@ class Water(Module):
         f_Irg = self.u['f_Irg']    # [mm d-1] Irrigation
         
         # -- Supporting equations
-        ### TODO: Define all necessary supporting equations
+        # [mm] Field capacities
+        fc1, fc2, fc3 = theta_fc1*D1, theta_fc2*D2, theta_fc3*D3
+        fc_arr = np.array([fc1, fc2, fc3])
+        # [mm] Permanent wilting points
+        pwp1, pwp2, pwp3 = theta_pwp1*D1, theta_pwp2*D2, theta_pwp3*D3  
+        pwp_arr = np.array([pwp1, pwp2, pwp3])
         
-        # Runoff equation
+        # - Effective precipitation
+        f_Ru = 0.0 # Runoff
+        if _f_prc + f_Irg > 0.2*S:
+            f_Ru = (_f_prc +f_Irg - 0.2*S)**2/(_f_prc + f_Irg + 0.8*S)
+        f_Pe = _f_prc - f_Ru + f_Irg
         
-        f_Ru = np.maximum(_f_prc-0.2*S,0)**2/(_f_prc + 0.8*S)
+        # - Reference and potential evapotranspiration
+        # Priestley-Taylor equation
+        Rn = 0.408*_I_glb*(1.0-alb)   # [J m-2 d-1 ] Net irradiance
+        Tk = _T + 273.15 # [K] Temperature env. from [°C] to [K]
+        Delta = 5304/Tk**2 * np.exp(21.3 - 5304/Tk) # [mbar °C-1] dPvapsat/dT
+        ET0 = alpha*Rn*Delta/(Delta+gamma)  # [mm d-1] Reference evapotransp
+        ETp = kcrop*ET0 # [mm d-1] Potential evapotranspiration
         
-        """
-        f_Ru = []
-        for prc in f_prc:
-            fru = (prc-0.2*S)**2/(prc + 0.8*S)
-            if prc <= 0.2*S:
-                f_Ru.append(0)
-            else:
-                f_Ru.append(fru)
-        """
-        """
-        if f_prc > 0.2*S:
-            f_Ru = (f_prc-0.2*S)**2/(f_prc + 0.8*S)
-        else:
-            f_Ru = 0
-        """
-        #Effective precipitation
-        f_Pe = _f_prc - f_Ru
-
-        #Evapotranspiration
-        Rn = 0.408 * _I_glb * (1 - alb)    # [J m-2 d-1] net radiation
-        delta = (5304/(_T+273)**2) * np.exp(21.3 - 5304/(_T+273))    #[mbar degrees C-1] slope of p_sat_vap at T_env
-        ET_0 = alpha * Rn * delta / (delta + gamma)     # [mm d-1] reference evapotranspiration
-        ET_p = kcrop * ET_0        # [mm d-1] Evapotranspiration potential
-
-        #Transpiration
-        WAI1 = max((L1/D1 - theta_pwp1), 0)/(theta_fc1-theta_pwp1) # [-] Water availability index of layer 1
-        WAI2 = max((L2/D2 - theta_pwp2), 0)/(theta_fc2-theta_pwp2)
-        WAI3 = max((L3/D3 - theta_pwp3), 0)/(theta_fc3-theta_pwp3)
+        # - Plant transpiration
+        kra = 0.0408*np.exp(0.19*_T) # [-] Root activity
+        # Restriction of transpiration (krt) per layer
+        WAI_arr = (L_arr-pwp_arr)/(fc_arr-pwp_arr)
+        WAI_arr = np.maximum(WAI_arr,np.zeros(3,))
+        krt_arr = np.ones((3,))
+        krt_arr[WAI_arr<WAIc] = WAI_arr[WAI_arr<WAIc]/WAIc
+        # Root fractions (krf)
+        krf_arr = np.array([krf1, krf2, krf3])
+        # Potential transpiration
+        kTr = 1.0 - np.exp(-0.6*_LAI) # [-] Transpiration fraction from ETp
+        Tp = kTr*ETp # [mm d-1] Potential transpiration
+        # Real transpiration (if Li > pwpi)
+        f_Tr_arr = (L_arr>pwp_arr)*kra*krt_arr*krf_arr*Tp # [mm d-1]
         
-        #k_rt1
-        if WAI1 < WAIc:
-            k_rt1 = WAI1 / WAIc
-        else: 
-            k_rt1 = 1                    # [-] restriction of transpiration by soil
-       #k_rt2
-        if WAI2 < WAIc:
-            k_rt2 = WAI2 / WAIc
-        else: 
-            k_rt2 = 1  
-            
-        #k_rt3
-        if WAI3 < WAIc:
-            k_rt3 = WAI3 / WAIc
-        else: 
-            k_rt3 = 1  
+        # - Soil evaporation
+        dt = self.dt
+        Ep = min(ETp-Tp, ETp*(1-mlc)) # [mm d-1] Evaporation potential
+        f_Ev = Ep/DSD**0.5  # [mm d-1] Real evaporation (if L1 > pwp1)
+        # Initial estimation of next water level
+        L1_hat = L_arr[0] + dt*(f_Pe - f_Ev - f_Tr_arr[0])
+        Ev_switch = L1_hat > 0.0
+        f_Ev = Ev_switch*f_Ev
         
-        k_ra = 0.0408 *np.exp(0.19*(_T))    # [-] root activity
-        k_tr = 1 - np.exp(-0.6*_LAI)     # [-] transpiration fraction from ETp   
-        T_p = k_tr*ET_p                  # [mm d-1] potential transpiration
+        # - Drainage (if Li_final > fc)
+        Dr1_switch = L1_hat > fc_arr[0]
+        f_Dr1 = Dr1_switch*(L1_hat - fc_arr[0])/dt
         
-        f_Tr1 = k_rt1 * k_ra * krf1 * T_p
-        f_Tr2 = k_rt2 * k_ra * krf2 * T_p
-        f_Tr3 = k_rt3 * k_ra * krf3 * T_p
+        Dr2_switch = L_arr[1] + dt*(f_Dr1 - f_Tr_arr[1]) > fc_arr[1]
+        f_Dr2 = Dr2_switch*((L_arr[1]-fc_arr[1])/dt + f_Dr1 - f_Tr_arr[1])
         
-
-        # Evaporation
-        Ep = np.minimum((ET_p-T_p), (ET_p*(1-mlc)))    #[mm d-1] Evaporation potential
-        f_Ev = Ep / np.sqrt(DSD)    # [mm d-1] Evaporation
-
-        #Drainage layer 1
-        if L1 > theta_fc1*D1:
-            f_Dr1 = L1-theta_fc1*D1
-        else:
-            f_Dr1 = 0
-            
-        #Drainage layer 2
-        if L2 > theta_fc2*D2:
-            f_Dr2 = L2-theta_fc2*D2
-        else:
-            f_Dr2 = 0
-            
-        #Drainage layer 3
-        if L3 > theta_fc3*D3:
-            f_Dr3 = L3-theta_fc3*D3
-        else:
-            f_Dr3 = 0
-
-        # -- Differential equations [mm d-1]
-        ### TODO: define the differential equations
-        ### (use the flow names indicated below)
-        dL1_dt = f_Pe - f_Tr1 - f_Ev - f_Dr1
-        dL2_dt = f_Dr1 - f_Tr2 - f_Dr2
-        dL3_dt = f_Dr2 - f_Tr3 - f_Dr3
+        Dr3_switch = L_arr[2] + dt*(f_Dr2 - f_Tr_arr[2]) > fc_arr[2]
+        f_Dr3 = Dr3_switch*((L_arr[2]-fc_arr[2])/dt + f_Dr2 - f_Tr_arr[2])
+        
+        f_Dr_arr = np.array([f_Dr1,f_Dr2,f_Dr3])
+        
+        # Water availability index
+        WAI = (L_arr.sum()-pwp_arr.sum()) / (fc_arr.sum()-pwp_arr.sum())
+        WAI = max(WAI,0)
+        
+        # Differential equations [mm d-1]
+        dL1_dt = f_Pe - f_Ev - f_Tr_arr[0] - f_Dr_arr[0]
+        dL2_dt = f_Dr_arr[0] - f_Tr_arr[1] - f_Dr_arr[1]
+        dL3_dt = f_Dr_arr[1] - f_Tr_arr[2] - f_Dr_arr[2]
+        # dDSD_dt: slope in [d/d] to be multiplied by dt in fcn_euler_forward
         dDSD_dt = 1 - (f_Pe >= 1.5*Ep)*DSD
         
         # Store flows
         idx = np.isin(self.t, _t)
         self.f['f_Pe'][idx] = f_Pe
-        self.f['f_Tr1'][idx] = f_Tr1
-        self.f['f_Tr2'][idx] = f_Tr2
-        self.f['f_Tr3'][idx] = f_Tr3
+        self.f['f_Tr1'][idx] = f_Tr_arr[0]
+        self.f['f_Tr2'][idx] = f_Tr_arr[1]
+        self.f['f_Tr3'][idx] = f_Tr_arr[2]
         self.f['f_Ev'][idx] = f_Ev
-        self.f['f_Dr1'][idx] = f_Dr1
-        self.f['f_Dr2'][idx] = f_Dr2
-        self.f['f_Dr3'][idx] = f_Dr3
+        self.f['f_Dr1'][idx] = f_Dr_arr[0]
+        self.f['f_Dr2'][idx] = f_Dr_arr[1]
+        self.f['f_Dr3'][idx] = f_Dr_arr[2]
         self.f['f_Irg'][idx] = f_Irg
         
         return np.array([dL1_dt, dL2_dt, dL3_dt, dDSD_dt])
-
+    
     def output(self, tspan):
         # Retrieve object properties
         dt = self.dt        # integration time step size
@@ -317,5 +305,6 @@ class Water(Module):
             'L1':L1,        # [mm] soil water level top layer
             'L2':L2,        # [mm] soil water level mid layer
             'L3':L3,        # [mm] soil water level bottom layer
-            'DSD':DSD,      # [d] days since damp  
+            'DSD':DSD,      # [d] days since damp
+            'WAI':WAI       # [-] water availability index
         }
