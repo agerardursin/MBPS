@@ -11,7 +11,7 @@ Evaluation of the grass & water model
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib.cm as colormaps
+from matplotlib import colormaps
 import sys
 sys.path.append('../mbps/models/')
 from models.grass_sol import Grass
@@ -40,7 +40,7 @@ dt_grs = 1 # [d]
 
 # Initial conditions
 # TODO: Specify suitable initial conditions for the grass sub-model
-x0_grs = {'Ws':???,'Wg':???} # [kgC m-2]
+x0_grs = {'Ws':1.0/25,'Wg':1.5/25} # [kgC m-2]
 
 # Model parameters (as provided by Mohtar et al. 1997 p.1492-1493)
 p_grs = {'a':40.0,          # [m2 kgC-1] structural specific leaf area
@@ -62,8 +62,9 @@ p_grs = {'a':40.0,          # [m2 kgC-1] structural specific leaf area
 # TODO: Adjust a few parameters to obtain growth.
 # Satrt by using the modifications from Case 1.
 # If needed, adjust further those or additional parameters
-p_grs[???] = ???
-p_grs[???] = ???
+p_grs['alpha'] = 4.75E-9#4.009E-09
+p_grs['k'] = 0.18#0.1757
+p_grs['m'] = 0.8#0.6749
 
 # Disturbances
 # PAR [J m-2 d-1], environment temperature [°C], leaf area index [-]
@@ -85,7 +86,7 @@ dt_wtr = 1 # [d]
 
 # Initial conditions
 # TODO: Specify suitable initial conditions for the soil water sub-model
-x0_wtr = {'L1':???, 'L2':???, 'L3':???, 'DSD':???} # 3*[mm], [d]
+x0_wtr = {'L1':0.36*150, 'L2':0.32*250, 'L3':0.24*600, 'DSD':1} # 3*[mm], [d]
 
 # Castellaro et al. 2009, and assumed values for soil types and layers
 p_wtr = {'alpha':1.29E-6,   # [mm J-1] Priestley-Taylor parameter
@@ -238,6 +239,27 @@ SNS_wtr_pls = np.abs(NS_wtr_pls)/NS_wtr_pls_sum
 t_grs = grass.t
 t_wtr = water.t
 
+# Sensitivity Analysis Calculation for Grass
+SNS_grs_pls_start = np.average((NS_grs_pls[1:50,:]/NS_grs_pls_sum[1:50,:]),axis=0)
+SNS_grs_min_start = np.average((NS_grs_min[1:50,:]/NS_grs_min_sum[1:50,:]),axis=0)
+SNS_grs_pls_end = np.average((NS_grs_pls[316:365,:]/NS_grs_pls_sum[316:365,:]),axis=0)
+SNS_grs_min_end = np.average((NS_grs_min[316:365,:]/NS_grs_min_sum[316:365,:]),axis=0)
+SNS_grs_pls_middle = np.average((NS_grs_pls[51:315,:]/NS_grs_pls_sum[51:315,:]),axis=0)
+SNS_grs_min_middle = np.average((NS_grs_min[51:315,:]/NS_grs_min_sum[51:315,:]),axis=0)
+SNS_grs_pls_avg = np.average((NS_grs_pls[1:-1]/NS_grs_pls_sum[1:-1]),axis=0)
+SNS_grs_min_avg = np.average((NS_grs_min[1:-1]/NS_grs_min_sum[1:-1]),axis=0)
+
+# Sensitivity Analysis Calculation for Water
+SNS_wtr_pls_start = np.average((NS_wtr_pls[1:50,:]/NS_wtr_pls_sum[1:50,:]),axis=0)
+SNS_wtr_min_start = np.average((NS_wtr_min[1:50,:]/NS_wtr_min_sum[1:50,:]),axis=0)
+SNS_wtr_pls_end = np.average((NS_wtr_pls[316:365,:]/NS_wtr_pls_sum[316:365,:]),axis=0)
+SNS_wtr_min_end = np.average((NS_wtr_min[316:365,:]/NS_wtr_min_sum[316:365,:]),axis=0)
+SNS_wtr_pls_middle = np.average((NS_wtr_pls[51:315,:]/NS_wtr_pls_sum[51:315,:]),axis=0)
+SNS_wtr_min_middle = np.average((NS_wtr_min[51:315,:]/NS_wtr_min_sum[51:315,:]),axis=0)
+SNS_wtr_pls_avg = np.average((NS_wtr_pls[1:-1]/NS_wtr_pls_sum[1:-1]),axis=0)
+SNS_wtr_min_avg = np.average((NS_wtr_min[1:-1]/NS_wtr_min_sum[1:-1]),axis=0)
+
+
 # Plots
 cmap = colormaps.get_cmap('tab10')
 
@@ -344,7 +366,7 @@ ax2f.plot(t_wtr, SNS_wtr_pls[:,18], label=r'$S+$',color=cmap(0.25))
 ax2f.plot(t_wtr, SNS_wtr_min[:,18], label=r'$S-$', linestyle='--', color=cmap(0.25))
 ax2f.legend()
 ax2f.set_xlabel('time'+r'$[d]$')
-
+plt.show()
 # References
 # Groot, J.C.J., and Lantinga, E.A., (2004). An object oriented model
 #   of the morphological development and digestability of perennial
