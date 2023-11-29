@@ -195,11 +195,11 @@ class Grass(Module):
         # Senescence [kgC m-2 d-1]
         f_S = beta*Wg
         # Recycling (can solve Ws<0, remove for student version)
-        # if Ws<1E-5:
-        #     f_R = 0.10*Wg
-        # else:
-        #     f_R = 0
-        f_R = 0
+        if Ws<1E-5:
+            f_R = 0.01*Wg
+        else:
+            f_R = 0
+        # f_R = 0
         
         # -- Differential equations [kgC m-2 d-1]
         dWs_dt = f_P - f_SR - f_G - f_MR + f_R

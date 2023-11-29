@@ -19,12 +19,14 @@ from models.water_sol import Water
 plt.style.use('ggplot')
 
 # Simulation time
-tsim = np.linspace(0, 365, int(365/5)+1) # [d]
+tsim = np.linspace(0, 365*2, int(365/5*2)+1) # [d]
 
 # Weather data (disturbances shared across models)
-t_ini = '19950101'
-t_end = '19960101'
-t_weather = np.linspace(0, 365, 365+1)
+# t_ini = '19950101'
+# t_end = '19970101'
+t_ini = '20170101'
+t_end = '20190101'
+t_weather = np.linspace(0, 365*2, 365*2+1)
 data_weather = pd.read_csv(
     '../data/etmgeg_260.csv', # .. to move up one directory from current directory
     skipinitialspace=True, # ignore spaces after comma separator
@@ -45,19 +47,19 @@ dt_grs = 1 # [d]
 
 # Initial conditions
 # TODO: Specify suitable initial conditions for the grass sub-model
-x0_grs = {'Ws':1.0,'Wg':1.5} # [kgC m-2] Derived from grass_cal
+x0_grs = {'Ws':1.0/25,'Wg':1.5/25} # [kgC m-2] Derived from grass_cal
 
 # Model parameters (as provided by Mohtar et al. 1997 p.1492-1493)
 p_grs = {'a':40.0,          # [m2 kgC-1] structural specific leaf area
      'alpha':2E-9,      # [kgCO2 J-1] leaf photosynthetic efficiency
      'beta':0.05,       # [d-1] senescence rate 
-     'k':0.5,           # [-] extinction coefficient of canopy
-     'm':0.1,           # [-] leaf transmission coefficient
+     'k':0.05,           # [-] extinction coefficient of canopy
+     'm':0.9,           # [-] leaf transmission coefficient
      'M':0.02,          # [d-1] maintenance respiration coefficient
      'mu_m':0.5,        # [d-1] max. structural specific growth rate
      'P0':0.432,        # [kgCO2 m-2 d-1] max photosynthesis parameter
      'phi':0.9,         # [-] photoshynth. fraction for growth
-     'Tmin':0.0,        # [°C] maximum temperature for growth
+     'Tmin':-10.0,        # [°C] maximum temperature for growth
      'Topt':20.0,       # [°C] minimum temperature for growth
      'Tmax':42.0,       # [°C] optimum temperature for growth
      'Y':0.75,          # [-] structure fraction from storage
@@ -67,9 +69,11 @@ p_grs = {'a':40.0,          # [m2 kgC-1] structural specific leaf area
 # TODO: Adjust a few parameters to obtain growth.
 # Satrt by using the modifications from Case 1.
 # If needed, adjust further those or additional parameters
-p_grs['alpha'] = 4.75E-9
-p_grs['k'] = 0.18
-p_grs['m'] = 0.8
+# p_grs['a'] = 33.73
+p_grs['alpha'] = 4.75E-9#4.009E-09
+# p_grs['beta'] = 0.07217
+p_grs['k'] = 0.18#0.1757
+p_grs['m'] = 0.8#0.6749
 # Disturbances
 # PAR [J m-2 d-1], environment temperature [°C], leaf area index [-]
 T = data_weather.loc[t_ini:t_end,'TG'].values    # [0.1 °C] Env. temperature
@@ -90,7 +94,7 @@ dt_wtr = 1 # [d]
 
 # Initial conditions
 # TODO: Specify suitable initial conditions for the soil water sub-model
-x0_wtr = {'L1':55, 'L2':80, 'L3':145, 'DSD':15} # 3*[mm], [d]
+x0_wtr = {'L1':0.36*150, 'L2':0.32*250, 'L3':0.24*600, 'DSD':1} # 3*[mm], [d]
 
 # Castellaro et al. 2009, and assumed values for soil types and layers
 p_wtr = {'S':10,            # [mm d-1] parameter of precipitation retention
@@ -251,6 +255,14 @@ ax5c.plot(t_wtr, -water.f['f_Dr3'], label=r'$f_{Dr3}$')
 ax5c.legend()
 ax5c.set_ylabel('flow rate ' + r'$[mm\ d^{-1}]$')
 ax5c.set_xlabel('time ' + r'$[d]$')
+
+fig6, (ax6a, ax6b) = plt.subplots(2,1, sharex=True)
+ax6a.plot(t_grs, I0, label=r'$f_{P}$')
+# ax6a.legend()
+ax6a.set_ylabel('Irradiance ' + r'$[J\ m^{-2}\ d^{-1}]$')
+ax6b.plot(t_grs, T, label=r'$Temperature$')
+# ax6b.legend()
+ax6b.set_ylabel('Temperature ' + r'$[\degree C]$')
 plt.show()
 # References
 # Groot, J.C.J., and Lantinga, E.A., (2004). An object oriented model
