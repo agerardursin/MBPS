@@ -19,14 +19,14 @@ from models.water_sol import Water
 plt.style.use('ggplot')
 
 # Simulation time
-tsim = np.linspace(0, 365*2, int(365/5*2)+1) # [d]
+tsim = np.linspace(0, 2*365, int(365/5)+1) # [d]
 
 # Weather data (disturbances shared across models)
-# t_ini = '19950101'
-# t_end = '19970101'
+# t_ini = '19940101'
+# t_end = '19960101'
 t_ini = '20170101'
 t_end = '20190101'
-t_weather = np.linspace(0, 365*2, 365*2+1)
+t_weather = np.linspace(0, 2*365, 2*365+1)
 data_weather = pd.read_csv(
     '../data/etmgeg_260.csv', # .. to move up one directory from current directory
     skipinitialspace=True, # ignore spaces after comma separator
@@ -37,7 +37,7 @@ data_weather = pd.read_csv(
 
 # Grass data. (Organic matter assumed equal to DM) [gDM m-2]
 # Groot and Lantinga (2004)
-t_data = np.array([107, 114, 122, 129, 136, 142, 149, 156])
+t_data = np.array([107, 114, 122, 129, 136, 142, 149, 156])+365
 m_data = np.array([156., 198., 333., 414., 510., 640., 663., 774.])
 m_data = m_data/1E3
 
@@ -71,7 +71,7 @@ p_grs = {'a':40.0,          # [m2 kgC-1] structural specific leaf area
 # If needed, adjust further those or additional parameters
 # p_grs['a'] = 33.73
 p_grs['alpha'] = 4.75E-9#4.009E-09
-# p_grs['beta'] = 0.07217
+p_grs['beta'] = 0.037217 #directly from grass_cal output
 p_grs['k'] = 0.18#0.1757
 p_grs['m'] = 0.8#0.6749
 # Disturbances
