@@ -262,7 +262,7 @@ class Water(Module):
         dDSD_dt = 1 - (f_Pe >= 1.5*Ep)*DSD
         
         # Store flows
-        idx = np.isin(self.t, _t)
+        idx = np.isin(np.round(self.t,8), np.round(_t,8))
         self.f['f_Pe'][idx] = f_Pe
         self.f['f_Tr1'][idx] = f_Tr_arr[0]
         self.f['f_Tr2'][idx] = f_Tr_arr[1]

@@ -206,7 +206,7 @@ class Grass(Module):
         dWg_dt = f_G - f_S - f_R - f_Hr - f_Gr
         
         # -- Store flows [kgC m-2 d-1]
-        idx = np.isin(self.t, _t)
+        idx = np.isin(np.round(self.t,8), np.round(_t,8))
         self.f['f_P'][idx] = f_P
         self.f['f_SR'][idx] = f_SR
         self.f['f_G'][idx] = f_G

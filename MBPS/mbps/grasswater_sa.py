@@ -58,14 +58,18 @@ p_grs = {'a':40.0,          # [m2 kgC-1] structural specific leaf area
      'Y':0.75,          # [-] structure fraction from storage
      'z':1.33           # [-] bell function power
      }
+
+
 # Model parameters adjusted manually to obtain growth
 # TODO: Adjust a few parameters to obtain growth.
 # Satrt by using the modifications from Case 1.
 # If needed, adjust further those or additional parameters
 p_grs['alpha'] = 4.75E-9#4.009E-09
+p_grs['beta'] = 0.037217 #directly from grass_cal output
 p_grs['k'] = 0.18#0.1757
 p_grs['m'] = 0.8#0.6749
-
+tbl_ref_grs = {**x0_grs,**p_grs}
+df_grs_ref = pd.DataFrame([tbl_ref_grs])
 # Disturbances
 # PAR [J m-2 d-1], environment temperature [°C], leaf area index [-]
 T = data_weather.loc[t_ini:t_end,'TG'].values    # [0.1 °C] Env. temperature
@@ -109,6 +113,9 @@ p_wtr = {'alpha':1.29E-6,   # [mm J-1] Priestley-Taylor parameter
      'mlc':0.2,       # [-] Fraction of soil covered by mulching
      'S':10,          # [mm d-1] parameter of precipitation retention
      }
+
+tbl_ref_wtr = {**x0_wtr,**p_wtr}
+df_wtr_ref = pd.DataFrame([tbl_ref_wtr])
 
 # Disturbances
 # global irradiance [J m-2 d-1], environment temperature [°C], 
@@ -226,13 +233,17 @@ for k in p_wtr.keys():
 # Sum-normalized sensitivities
 NS_grs_min_sum = np.sum(np.abs(NS_grs_min),axis=1).reshape((grass.t.size,1))
 SNS_grs_min = np.abs(NS_grs_min)/NS_grs_min_sum
+SNS_grs_min_sgn = NS_grs_min/NS_grs_min_sum
 NS_grs_pls_sum = np.sum(np.abs(NS_grs_pls),axis=1).reshape((grass.t.size,1))
 SNS_grs_pls = np.abs(NS_grs_pls)/NS_grs_pls_sum
+SNS_grs_pls_sgn = NS_grs_pls/NS_grs_pls_sum
 
 NS_wtr_min_sum = np.sum(np.abs(NS_wtr_min),axis=1).reshape((grass.t.size,1))
 SNS_wtr_min = np.abs(NS_wtr_min)/NS_wtr_min_sum
+SNS_wtr_min_sgn = NS_wtr_min/NS_wtr_min_sum
 NS_wtr_pls_sum = np.sum(np.abs(NS_wtr_pls),axis=1).reshape((grass.t.size,1))
 SNS_wtr_pls = np.abs(NS_wtr_pls)/NS_wtr_pls_sum
+SNS_wtr_pls_sgn = NS_wtr_pls/NS_wtr_pls_sum
 
 #%% Figures SA grass
 # Retrieve simulation results
@@ -249,16 +260,62 @@ SNS_grs_min_middle = np.average((NS_grs_min[51:315,:]/NS_grs_min_sum[51:315,:]),
 SNS_grs_pls_avg = np.average((NS_grs_pls[1:-1]/NS_grs_pls_sum[1:-1]),axis=0)
 SNS_grs_min_avg = np.average((NS_grs_min[1:-1]/NS_grs_min_sum[1:-1]),axis=0)
 
+SNS_grs_tbl = np.array([SNS_grs_pls_start,SNS_grs_min_start,SNS_grs_pls_end,SNS_grs_min_end,SNS_grs_pls_middle,
+                        SNS_grs_min_middle,SNS_grs_pls_avg,SNS_grs_min_avg])
+
+df_grs = pd.DataFrame(SNS_grs_tbl, columns=['a',          # [m2 kgC-1] structural specific leaf area
+     'alpha',      # [kgCO2 J-1] leaf photosynthetic efficiency
+     'beta',       # [d-1] senescence rate
+     'k',           # [-] extinction coefficient of canopy
+     'm',           # [-] leaf transmission coefficient
+     'M',          # [d-1] maintenance respiration coefficient
+     'mu_m',        # [d-1] max. structural specific growth rate
+     'P0',        # [kgCO2 m-2 d-1] max photosynthesis parameter
+     'phi',         # [-] photoshynth. fraction for growth
+     'Tmin',        # [°C] maximum temperature for growth
+     'Topt',       # [°C] minimum temperature for growth
+     'Tmax',       # [°C] optimum temperature for growth
+     'Y',          # [-] structure fraction from storage
+     'z'], index=['start+','start-','End+','End-','Middle+','Middle-','Average+','Average-'])
+
 # Sensitivity Analysis Calculation for Water
-SNS_wtr_pls_start = np.average((NS_wtr_pls[1:50,:]/NS_wtr_pls_sum[1:50,:]),axis=0)
-SNS_wtr_min_start = np.average((NS_wtr_min[1:50,:]/NS_wtr_min_sum[1:50,:]),axis=0)
+SNS_wtr_pls_start = np.average((NS_wtr_pls[2:51,:]/NS_wtr_pls_sum[2:51,:]),axis=0)
+SNS_wtr_min_start = np.average((NS_wtr_min[2:51,:]/NS_wtr_min_sum[2:51,:]),axis=0)
 SNS_wtr_pls_end = np.average((NS_wtr_pls[316:365,:]/NS_wtr_pls_sum[316:365,:]),axis=0)
 SNS_wtr_min_end = np.average((NS_wtr_min[316:365,:]/NS_wtr_min_sum[316:365,:]),axis=0)
-SNS_wtr_pls_middle = np.average((NS_wtr_pls[51:315,:]/NS_wtr_pls_sum[51:315,:]),axis=0)
-SNS_wtr_min_middle = np.average((NS_wtr_min[51:315,:]/NS_wtr_min_sum[51:315,:]),axis=0)
-SNS_wtr_pls_avg = np.average((NS_wtr_pls[1:-1]/NS_wtr_pls_sum[1:-1]),axis=0)
-SNS_wtr_min_avg = np.average((NS_wtr_min[1:-1]/NS_wtr_min_sum[1:-1]),axis=0)
+SNS_wtr_pls_middle = np.average((NS_wtr_pls[52:315,:]/NS_wtr_pls_sum[52:315,:]),axis=0)
+SNS_wtr_min_middle = np.average((NS_wtr_min[52:315,:]/NS_wtr_min_sum[52:315,:]),axis=0)
+SNS_wtr_pls_avg = np.average((NS_wtr_pls[2:-1]/NS_wtr_pls_sum[2:-1]),axis=0)
+SNS_wtr_min_avg = np.average((NS_wtr_min[2:-1]/NS_wtr_min_sum[2:-1]),axis=0)
 
+SNS_wtr_tbl = np.array([SNS_wtr_pls_start,SNS_wtr_min_start,SNS_wtr_pls_end,SNS_wtr_min_end,SNS_wtr_pls_middle,
+                        SNS_wtr_min_middle,SNS_wtr_pls_avg,SNS_wtr_min_avg])
+
+df_wtr = pd.DataFrame(SNS_wtr_tbl, columns=['alpha',   # [mm J-1] Priestley-Taylor parameter
+     'gamma',      # [mbar °C-1] Psychrometric constant
+     'alb',        # [-] Albedo (assumed constant crop & soil)
+     'kcrop',      # [mm d-1] Evapotransp coefficient, range (0.85-1.0)
+     'WAIc',       # [-] WDI critical, range (0.5-0.8)
+     'theta_fc1',      # [-] Field capacity of soil layer 1
+     'theta_fc2',      # [-] Field capacity of soil layer 2
+     'theta_fc3',      # [-] Field capacity of soil layer 3
+     'theta_pwp1',     # [-] Permanent wilting point of soil layer 1
+     'theta_pwp2',     # [-] Permanent wilting point of soil layer 2
+     'theta_pwp3',     # [-] Permanent wilting point of soil layer 3
+     'D1',        # [mm] Depth of Soil layer 1
+     'D2',        # [mm] Depth of soil layer 2
+     'D3',        # [mm] Depth of soil layer 3
+     'krf1',     # [-] Rootfraction layer 1 (guess)
+     'krf2',     # [-] Rootfraction layer 2 (guess)
+     'krf3',     # [-] Rootfraction layer 2 (guess)
+     'mlc',       # [-] Fraction of soil covered by mulching
+     'S'], index=['start+','start-','End+','End-','Middle+','Middle-','Average+','Average-'])
+
+
+# df_grs_ref.to_excel(r"C:/Users/alek-/Documents/Wageningen Period 2/MBPS/MBPS/case3_SA_grs_ref.xlsx")
+# df_wtr_ref.to_excel(r"C:/Users/alek-/Documents/Wageningen Period 2/MBPS/MBPS/case3_SA_wtr_ref.xlsx")
+# df_grs.to_excel(r"C:/Users/alek-/Documents/Wageningen Period 2/MBPS/MBPS/case3_SA_grs.xlsx")
+# df_wtr.to_excel(r"C:/Users/alek-/Documents/Wageningen Period 2/MBPS/MBPS/case3_SA_wtr.xlsx")
 
 # Plots
 cmap = colormaps.get_cmap('tab10')
@@ -366,7 +423,44 @@ ax2f.plot(t_wtr, SNS_wtr_pls[:,18], label=r'$S+$',color=cmap(0.25))
 ax2f.plot(t_wtr, SNS_wtr_min[:,18], label=r'$S-$', linestyle='--', color=cmap(0.25))
 ax2f.legend()
 ax2f.set_xlabel('time'+r'$[d]$')
+
+
+plt.figure(3)
+plt.plot(t_grs, SNS_grs_pls[:,2], label=r'$\beta+$', color=cmap(0.50))
+plt.plot(t_grs, SNS_grs_min[:,2], label=r'$\beta-$', linestyle='--', color=cmap(0.50))
+plt.plot(t_grs, SNS_grs_pls[:,4], label=r'$m+$',color=cmap(0))
+plt.plot(t_grs, SNS_grs_min[:,4], label=r'$m-$', linestyle='--', color=cmap(0))
+plt.plot(t_grs, SNS_grs_pls[:,5], label=r'$M+$',color=cmap(0.75))
+plt.plot(t_grs, SNS_grs_min[:,5], label=r'$M-$', linestyle='--', color=cmap(0.75))
+plt.plot(t_grs, SNS_grs_pls[:,8], label=r'$\phi+$', color=cmap(1.0))
+plt.plot(t_grs, SNS_grs_min[:,8], label=r'$\phi-$', linestyle='--', color=cmap(1.0))
+plt.plot(t_grs, SNS_grs_pls[:,9], label=r'$Tmin+$',color=cmap(0.25))
+plt.plot(t_grs, SNS_grs_min[:,9], label=r'$Tmin-$', linestyle='--', color=cmap(0.25))
+plt.legend()
+plt.ylim(-0.1, 0.8)
+plt.xlabel('time'+r'$[d]$')
+plt.title('Normalized Sensitivities for Grass Model Parameters')
+plt.ylabel(r'$SNS\ [-]$')
+
+plt.figure(4)
+plt.plot(t_wtr, SNS_wtr_pls[:,0], label=r'$\alpha+$', color=cmap(0))
+plt.plot(t_wtr, SNS_wtr_min[:,0], label=r'$\alpha-$', linestyle='--', color=cmap(0))
+plt.plot(t_wtr, SNS_wtr_pls[:,3], label=r'$k_{crop}+$', color=cmap(0.25))
+plt.plot(t_wtr, SNS_wtr_min[:,3], label=r'$k_{crop}-$', linestyle='--', color=cmap(0.25))
+plt.plot(t_wtr, SNS_wtr_pls[:,7], label=r'$\theta_{fc3}+$', color=cmap(0.75))
+plt.plot(t_wtr, SNS_wtr_min[:,7], label=r'$\theta_{fc3}-$', linestyle='--', color=cmap(0.75))
+plt.plot(t_wtr, SNS_wtr_pls[:,10], label=r'$\theta_{pwp3}+$', color=cmap(0.5))
+plt.plot(t_wtr, SNS_wtr_min[:,10], label=r'$\theta_{pwp3}-$', linestyle='--', color=cmap(0.5))
+plt.plot(t_wtr, SNS_wtr_pls[:,16], label=r'$k_{rf3}+$',color=cmap(1.0))
+plt.plot(t_wtr, SNS_wtr_min[:,16], label=r'$k_{rf3}-$', linestyle='--', color=cmap(1.0))
+plt.legend()
+plt.ylim(-0.1, 0.3)
+plt.xlabel('time'+r'$[d]$')
+plt.title('Normalized Sensitivities for Water Model Parameters')
+plt.ylabel(r'$SNS\ [-]$')
 plt.show()
+
+
 # References
 # Groot, J.C.J., and Lantinga, E.A., (2004). An object oriented model
 #   of the morphological development and digestability of perennial

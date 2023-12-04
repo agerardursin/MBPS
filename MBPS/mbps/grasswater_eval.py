@@ -19,14 +19,14 @@ from models.water_sol import Water
 plt.style.use('ggplot')
 
 # Simulation time
-tsim = np.linspace(0, 2*365, int(365/5)+1) # [d]
+tsim = np.linspace(0, 365, int(365/5)+1) # [d]
 
 # Weather data (disturbances shared across models)
-# t_ini = '19940101'
-# t_end = '19960101'
-t_ini = '20170101'
-t_end = '20190101'
-t_weather = np.linspace(0, 2*365, 2*365+1)
+t_ini = '19950101'
+t_end = '19960101'
+# t_ini = '20170101'
+# t_end = '20190101'
+t_weather = np.linspace(0, 365, 365+1)
 data_weather = pd.read_csv(
     '../data/etmgeg_260.csv', # .. to move up one directory from current directory
     skipinitialspace=True, # ignore spaces after comma separator
@@ -37,7 +37,7 @@ data_weather = pd.read_csv(
 
 # Grass data. (Organic matter assumed equal to DM) [gDM m-2]
 # Groot and Lantinga (2004)
-t_data = np.array([107, 114, 122, 129, 136, 142, 149, 156])+365
+t_data = np.array([107, 114, 122, 129, 136, 142, 149, 156])
 m_data = np.array([156., 198., 333., 414., 510., 640., 663., 774.])
 m_data = m_data/1E3
 
@@ -256,13 +256,16 @@ ax5c.legend()
 ax5c.set_ylabel('flow rate ' + r'$[mm\ d^{-1}]$')
 ax5c.set_xlabel('time ' + r'$[d]$')
 
-fig6, (ax6a, ax6b) = plt.subplots(2,1, sharex=True)
+fig6, (ax6a, ax6b, ax6c) = plt.subplots(3,1, sharex=True)
 ax6a.plot(t_grs, I0, label=r'$f_{P}$')
 # ax6a.legend()
 ax6a.set_ylabel('Irradiance ' + r'$[J\ m^{-2}\ d^{-1}]$')
 ax6b.plot(t_grs, T, label=r'$Temperature$')
 # ax6b.legend()
 ax6b.set_ylabel('Temperature ' + r'$[\degree C]$')
+ax6c.plot(t_grs, f_prc, label=r'$Precipitation$')
+# ax6b.legend()
+ax6c.set_ylabel('$Precipitation$ ' + r'$[mm]$')
 plt.show()
 # References
 # Groot, J.C.J., and Lantinga, E.A., (2004). An object oriented model

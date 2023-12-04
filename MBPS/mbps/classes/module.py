@@ -51,7 +51,7 @@ class Module():
             for k in self.y_keys:
                 self.y[k] = np.full((len(self.t),),np.nan)       
         for k in self.y_keys:
-            idxs = np.isin(self.t,y['t'])
+            idxs = np.isin(np.round(self.t,8),np.round(y['t'],8))
             self.y[k][idxs] = y[k]
         # Update initial conditions
         for k in self.x0.keys():
