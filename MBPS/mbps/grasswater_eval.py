@@ -19,14 +19,14 @@ from models.water_sol import Water
 plt.style.use('ggplot')
 
 # Simulation time
-tsim = np.linspace(0, 365, int(365/5)+1) # [d]
+tsim = np.linspace(0, 2*365, int(365/5)+1) # [d]
 
 # Weather data (disturbances shared across models)
-t_ini = '19950101'
-t_end = '19960101'
-# t_ini = '20170101'
-# t_end = '20190101'
-t_weather = np.linspace(0, 365, 365+1)
+# t_ini = '19940101'
+# t_end = '19960101'
+t_ini = '20170101'
+t_end = '20190101'
+t_weather = np.linspace(0, 365*2, 2*365+1)
 data_weather = pd.read_csv(
     '../data/etmgeg_260.csv', # .. to move up one directory from current directory
     skipinitialspace=True, # ignore spaces after comma separator
@@ -37,7 +37,7 @@ data_weather = pd.read_csv(
 
 # Grass data. (Organic matter assumed equal to DM) [gDM m-2]
 # Groot and Lantinga (2004)
-t_data = np.array([107, 114, 122, 129, 136, 142, 149, 156])
+t_data = np.array([107, 114, 122, 129, 136, 142, 149, 156])+365
 m_data = np.array([156., 198., 333., 414., 510., 640., 663., 774.])
 m_data = m_data/1E3
 
@@ -47,19 +47,19 @@ dt_grs = 1 # [d]
 
 # Initial conditions
 # TODO: Specify suitable initial conditions for the grass sub-model
-x0_grs = {'Ws':1.0/25,'Wg':1.5/25} # [kgC m-2] Derived from grass_cal
+x0_grs = {'Ws':1.0/50,'Wg':1.5/50} # [kgC m-2] Derived from grass_cal
 
 # Model parameters (as provided by Mohtar et al. 1997 p.1492-1493)
 p_grs = {'a':40.0,          # [m2 kgC-1] structural specific leaf area
      'alpha':2E-9,      # [kgCO2 J-1] leaf photosynthetic efficiency
      'beta':0.05,       # [d-1] senescence rate 
-     'k':0.05,           # [-] extinction coefficient of canopy
-     'm':0.9,           # [-] leaf transmission coefficient
+     'k':0.5,           # [-] extinction coefficient of canopy
+     'm':0.1,           # [-] leaf transmission coefficient
      'M':0.02,          # [d-1] maintenance respiration coefficient
      'mu_m':0.5,        # [d-1] max. structural specific growth rate
      'P0':0.432,        # [kgCO2 m-2 d-1] max photosynthesis parameter
      'phi':0.9,         # [-] photoshynth. fraction for growth
-     'Tmin':-10.0,        # [°C] maximum temperature for growth
+     'Tmin':0.0,        # [°C] maximum temperature for growth
      'Topt':20.0,       # [°C] minimum temperature for growth
      'Tmax':42.0,       # [°C] optimum temperature for growth
      'Y':0.75,          # [-] structure fraction from storage
@@ -70,10 +70,14 @@ p_grs = {'a':40.0,          # [m2 kgC-1] structural specific leaf area
 # Satrt by using the modifications from Case 1.
 # If needed, adjust further those or additional parameters
 # p_grs['a'] = 33.73
-p_grs['alpha'] = 4.75E-9#4.009E-09
-p_grs['beta'] = 0.037217 #directly from grass_cal output
+p_grs['alpha'] = 4.403E-09#4.478E-09#4.75E-9#4.75E-9#4.009E-09
+# p_grs['Y'] = 0.7119
+p_grs['beta'] = 4.145E-02#0.03722#0.037217 #directly from grass_cal output
 p_grs['k'] = 0.18#0.1757
 p_grs['m'] = 0.8#0.6749
+p_grs['phi'] = 0.8591
+
+
 # Disturbances
 # PAR [J m-2 d-1], environment temperature [°C], leaf area index [-]
 T = data_weather.loc[t_ini:t_end,'TG'].values    # [0.1 °C] Env. temperature
@@ -173,8 +177,8 @@ WAI = water.y['WAI']
 plt.figure(1)
 plt.plot(t_grs, WsDM, label='WsDM')
 plt.plot(t_grs, WgDM, label='WgDM')
-plt.plot(t_data, m_data,
-          linestyle='None', marker='o', label='WgDM data')
+# plt.plot(t_data, m_data,
+#           linestyle='None', marker='o', label='WgDM data')
 plt.legend()
 plt.xlabel(r'$time\ [d]$')
 plt.ylabel(r'$grass\ biomass\ [kgDM\ m^{-2}]$')

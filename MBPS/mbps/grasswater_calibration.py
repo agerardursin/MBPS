@@ -18,26 +18,31 @@ from models.grass_sol import Grass
 from models.water_sol import Water
 from scipy.optimize import least_squares
 
-from mbps.models.grass_sol import Grass
-from mbps.functions.calibration import fcn_residuals, fcn_accuracy
+from models.grass_sol import Grass
+from functions.calibration import fcn_residuals, fcn_accuracy
 
 plt.style.use('ggplot')
 
 # Simulation time
-tsim = np.linspace(0, 365*2, int(365/5)+1) # [d]
+tsim = np.linspace(0, 365, int(365/5)+1) # [d]
+# tsim = np.linspace(0, 365*2, int(365/5)+1) # [d]
 
 # Weather data (disturbances shared across models)
-t_ini = '19940101'
+t_ini = '19950101'
+# t_ini = '19940101'
 t_end = '19960101'
-t_weather = np.linspace(0, 365*2, 365*2+1)
+# t_weather = np.linspace(0, 365*2, 365*2+1)
+t_weather = np.linspace(0, 365, 365+1)
 data_weather = pd.read_csv(
     '../data/etmgeg_260.csv', # .. to move up one directory from current directory
     skipinitialspace=True, # ignore spaces after comma separator
     header = 47-3, # row with column names, 0-indexed, excluding spaces
     usecols = ['YYYYMMDD', 'TG', 'Q', 'RH'], # columns to use
+    # usecols = ['YEAR','MO', 'DY', 'TG', 'Q', 'RH'],
     index_col = 0, # column with row names from used columns, 0-indexed
     )
-t_data = np.array([107, 114, 122, 129, 136, 142, 149, 156])+365
+# t_data = np.array([107, 114, 122, 129, 136, 142, 149, 156])+365
+t_data = np.array([107, 114, 122, 129, 136, 142, 149, 156])
 m_data = np.array([156., 198., 333., 414., 510., 640., 663., 774.])
 m_data = m_data/1E3
 
@@ -47,7 +52,7 @@ dt_grs = 1 # [d]
 
 # Initial conditions
 # TODO: Specify suitable initial conditions for the grass sub-model
-x0_grs = {'Ws':1.0/25,'Wg':1.5/25} # [kgC m-2]
+x0_grs = {'Ws':1.0/50,'Wg':1.5/50} # [kgC m-2]
 
 # Model parameters (as provided by Mohtar et al. 1997 p.1492-1493)
 p_grs = {'a':40.0,          # [m2 kgC-1] structural specific leaf area
@@ -71,11 +76,11 @@ p_grs = {'a':40.0,          # [m2 kgC-1] structural specific leaf area
 # TODO: Adjust a few parameters to obtain growth.
 # Satrt by using the modifications from Case 1.
 # If needed, adjust further those or additional parameters
-p_grs['alpha'] = 4.75E-9#4.009E-09
-p_grs['beta'] = 0.037217 #directly from grass_cal output
-p_grs['k'] = 0.18#0.1757
-p_grs['m'] = 0.8#0.6749
-p_grs['phi'] = 8.591E-01
+p_grs['alpha'] = 8E-9#8.346E-09#4.478E-9#4.75E-9#4.009E-09
+p_grs['beta'] = 0.04145# #directly from grass_cal output
+p_grs['k'] = 0.18#0.18#0.1757
+p_grs['m'] = 0.8#0.8#0.6749
+p_grs['phi'] = 0.85#8.591E-01+0.1
 
 # Disturbances
 # PAR [J m-2 d-1], environment temperature [°C], leaf area index [-]
@@ -103,7 +108,7 @@ x0_wtr = {'L1':0.36*150, 'L2':0.32*250, 'L3':0.24*600, 'DSD':1} # 3*[mm], [d]
 p_wtr = {'alpha':1.29E-6,   # [mm J-1] Priestley-Taylor parameter
      'gamma':0.68,      # [mbar °C-1] Psychrometric constant
      'alb':0.23,        # [-] Albedo (assumed constant crop & soil)
-     'kcrop':0.90,      # [mm d-1] Evapotransp coefficient, range (0.85-1.0)
+     'kcrop':0.85,      # [mm d-1] Evapotransp coefficient, range (0.85-1.0)
      'WAIc':0.75,       # [-] WDI critical, range (0.5-0.8)
      'theta_fc1':0.36,      # [-] Field capacity of soil layer 1
      'theta_fc2':0.32,      # [-] Field capacity of soil layer 2
@@ -147,9 +152,13 @@ def fnc_y(p0):
     grass.x0 = x0_grs.copy()
     water.x0 = x0_wtr.copy()
     
+    # grass.p['alpha'] = p0[0]
+    # grass.p['phi'] = p0[0]#p0[1]
     grass.p['alpha'] = p0[0]
-    grass.p['beta'] = p0[1]
-    
+    grass.p['phi'] = p0[1]
+    water.p['kcrop'] = p0[2]#p0[2]
+    water.p['krf3'] = p0[3]
+
     # Initial disturbance
     d_grs['WAI'] = np.array([[0,1,2,3,4], [1.,]*5]).T
     
@@ -179,18 +188,28 @@ def fnc_y(p0):
 #### -- Calibration --
 
 # Run calibration function
-# p0 = np.array([p_grs['alpha'], p_grs['phi'], p_grs['beta'], p_grs['m']]) # Initial guess
-# bnds = ((1E-12, 0.1, 1E-4, 1E-3), (1E-3, 0.99, 0.1, 0.8))
-# p0 = np.array([p_grs['alpha'], p_grs['a'], p_grs['beta'], p_grs['k']]) # Initial guess
-# bnds = ((1E-12, 0.1, 1E-4, 1E-4), (1E-3, 100, 0.1, 0.2))
-# p0 = np.array([p_grs['alpha'], p_grs['Y'], p_grs['beta']]) # Initial guess
-# bnds = ((1E-12, 1E-3, 1E-4), (1E-3, 0.99, 0.1))
-# p0 = np.array([p_grs['alpha'], p_grs['Y'], p_grs['beta'], p_grs['phi'], p_grs['Tmin']]) # Initial guess
-# bnds = ((1E-12, 1E-3, 1E-4, 0.1, -10), (1E-3, 0.99, 0.1, 0.99, 10))
-# p0 = np.array([p_grs['alpha'], p_grs['beta'], p_grs['Tmin']]) # Initial guess
-# bnds = ((1E-12, 1E-4, -10), (1E-3, 0.1, 10))
-p0 = np.array([p_grs['alpha'], p_grs['beta']]) # Initial guess
-bnds = ((1E-12, 1E-4), (1E-3, 0.1))
+# p0 = np.array([p_grs['alpha'], p_grs['beta']]) # Initial guess
+# bnds = ((1E-12, 1E-4), (1E-3, 0.1))
+# p0 = np.array([p_grs['alpha'], p_grs['phi'], p_grs['beta']]) # Initial guess
+# bnds = ((1E-12, 0.1, 1E-4), (1E-3, 0.99, 0.1))
+
+#Final
+# p0 = np.array([p_grs['alpha'], p_grs['phi']]) # Initial guess
+# bnds = ((1E-12, 1E-4), (1E-3, 0.99))
+
+#%% Challenge
+# p0 = np.array([p_grs['alpha'], p_grs['m'], p_grs['phi'], p_wtr['kcrop']]) # Initial guess
+# bnds = ((1E-12, 1E-4, 0.1, 0.85), (1E-3, 0.8, 0.99, 1))
+# p0 = np.array([p_grs['m'], p_grs['phi'], p_wtr['kcrop']]) # Initial guess
+# bnds = ((1E-4, 0.1, 0.85), (0.8, 0.99, 1))
+# p0 = np.array([p_grs['alpha'], p_wtr['kcrop']]) # Initial guess
+# bnds = ((1E-12, 0.85), (1E-3, 1))
+# p0 = np.array([p_grs['alpha'], p_grs['phi'], p_wtr['kcrop'], p_wtr['krf3']]) # Initial guess
+# bnds = ((1E-12, 1E-3, 0.85, 0.1), (1E-3, 0.99, 1, 0.75))
+p0 = np.array([p_grs['alpha'], p_grs['phi'], p_wtr['kcrop'], p_wtr['krf3']]) # Initial guess
+bnds = ((1E-12, 1E-3, 0.85, 0.1), (1E-3, 0.99, 1, 0.75))
+
+# bnds = ((1E-12, 1E-4, 1), (1E-3, 0.99,100))
 y_ls = least_squares(fcn_residuals, p0, bounds=bnds,
                      args=(fnc_y, grass.t, t_data, m_data),
                      kwargs={'plot_progress':True})
@@ -210,3 +229,4 @@ plt.plot(t_data, m_data,
 plt.legend()
 plt.xlabel(r'$time\ [d]$')
 plt.ylabel(r'$grass\ biomass\ [kgDM\ m^{-2}]$')
+plt.show()
