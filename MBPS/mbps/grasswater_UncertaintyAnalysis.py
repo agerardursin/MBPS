@@ -20,6 +20,7 @@ from scipy.optimize import least_squares
 
 from models.grass_sol import Grass
 from functions.calibration import fcn_residuals, fcn_accuracy
+from mbps.functions.uncertainty import fcn_plot_uncertainty
 
 plt.style.use('ggplot')
 
@@ -251,7 +252,8 @@ for j in range(n_sim):
     
     alpha = rng.normal(p_hat[0], y_calib_acc['sd'][0])
     beta = rng.normal(p_hat[1], y_calib_acc['sd'][1])
-    p0 = (alpha, beta)
+    something = rng.normal(p_hat[2], y_calib_acc['sd'][2])
+    p0 = (alpha, beta, something)
     m = fnc_y(p0)
     m_arr[:,j] = m
     
