@@ -80,7 +80,7 @@ p_grs['alpha'] = 8E-9#8.346E-09#4.478E-9#4.75E-9#4.009E-09
 p_grs['beta'] = 0.04145# #directly from grass_cal output
 p_grs['k'] = 0.18#0.18#0.1757
 p_grs['m'] = 0.8#0.8#0.6749
-p_grs['phi'] = 0.85#8.591E-01+0.1
+p_grs['phi'] = 0.9#8.591E-01+0.1
 
 # Disturbances
 # PAR [J m-2 d-1], environment temperature [°C], leaf area index [-]
@@ -125,7 +125,7 @@ p_wtr = {'alpha':1.29E-6,   # [mm J-1] Priestley-Taylor parameter
      'mlc':0.2,       # [-] Fraction of soil covered by mulching
      'S':10,          # [mm d-1] parameter of precipitation retention
      }
-
+p_wtr['kcrop'] = 0.9
 # Disturbances
 # global irradiance [J m-2 d-1], environment temperature [°C], 
 # precipitation [mm d-1], leaf area index [-].
