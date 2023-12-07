@@ -155,9 +155,9 @@ def fnc_y(p0):
     # grass.p['alpha'] = p0[0]
     # grass.p['phi'] = p0[0]#p0[1]
     grass.p['alpha'] = p0[0]
-    # grass.p['phi'] = p0[1]
-    water.p['kcrop'] = p0[1]#p0[2]
-    water.p['krf3'] = p0[2]
+    grass.p['phi'] = p0[1]
+    water.p['kcrop'] = p0[2]#p0[2]
+    # water.p['krf3'] = p0[2]
 
     # Initial disturbance
     d_grs['WAI'] = np.array([[0,1,2,3,4], [1.,]*5]).T
@@ -208,9 +208,10 @@ def fnc_y(p0):
 # bnds = ((1E-12, 1E-3, 0.85, 0.1), (1E-3, 0.99, 1, 0.75))
 # p0 = np.array([p_grs['alpha'], p_grs['phi'], p_wtr['kcrop'], p_wtr['krf3']]) # Initial guess
 # bnds = ((1E-12, 1E-3, 0.85, 0.1), (1E-3, 0.99, 1, 0.75))
-p0 = np.array([p_grs['alpha'], p_wtr['kcrop'], p_wtr['alpha']]) # Initial guess
-bnds = ((1E-12, 0.85, 1E-12), (1E-3, 1, 1E-3))
-
+# p0 = np.array([p_grs['alpha'], p_wtr['kcrop'], p_wtr['alpha']]) # Initial guess
+# bnds = ((1E-12, 0.85, 1E-12), (1E-3, 1, 1E-3))
+p0 = np.array([p_grs['alpha'], p_grs['phi'], p_wtr['kcrop']]) # Initial guess
+bnds = ((1E-12, 1E-3, 0.85), (1E-3, 0.99, 1))
 # bnds = ((1E-12, 1E-4, 1), (1E-3, 0.99,100))
 y_ls = least_squares(fcn_residuals, p0, bounds=bnds,
                      args=(fnc_y, grass.t, t_data, m_data),

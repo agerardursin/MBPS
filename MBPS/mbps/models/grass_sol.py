@@ -134,7 +134,10 @@ class Grass(Module):
     def diff(self, _t, _x0):
         # -- Initial conditions
         Ws, Wg = _x0[0], _x0[1]
-        
+
+        # Flag to enable harvest
+        hrvst = False
+
         # -- Physical constants
         theta = 12/44            # [-] CO2 to C (physical constant)
         
@@ -203,7 +206,7 @@ class Grass(Module):
 
         # 135 is to ensure harvest happens at around the start of May since that is typical harvesting time
         # 0.35 kg based on typical harvesting mass
-        if np.mod(_t,365) >= 135 and Wg > 0.4*0.4:
+        if np.mod(_t,365) >= 135 and Wg > 0.4*0.4 and hrvst:
             # 0.2 kg is because on average in NL farmers harvest around 2000 kg/ha -> 0.2 kg/m^2
             f_Hr = 0.3*0.4
         else:

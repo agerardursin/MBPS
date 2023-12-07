@@ -14,13 +14,14 @@ import matplotlib.pyplot as plt
 from matplotlib import colormaps
 import sys
 sys.path.append('../mbps/models/')
+sys.path.append('../mbps/functions/')
 from models.grass_sol import Grass
 from models.water_sol import Water
 from scipy.optimize import least_squares
 
 from models.grass_sol import Grass
 from functions.calibration import fcn_residuals, fcn_accuracy
-from mbps.functions.uncertainty import fcn_plot_uncertainty
+from functions.uncertainty import fcn_plot_uncertainty
 
 plt.style.use('ggplot')
 
@@ -270,3 +271,4 @@ ax2 = fcn_plot_uncertainty(ax2, tsim, m_arr, ci=[0.50,0.68,0.95])
 # ax2.plot(tsim, np.full(tsim.shape,1.420), color='k')
 plt.xlabel(r'$time\ [d]$')
 plt.ylabel('biomass ' + r'$[kgDM\ m^{-2}]$')
+plt.show()
