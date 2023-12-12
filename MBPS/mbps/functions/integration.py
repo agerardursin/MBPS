@@ -8,7 +8,7 @@ MSc Biosystems Engineering, WUR
 """
 import numpy as np
 
-def fcn_euler_forward(diff, t_span, y0, h=1.0):
+def fcn_euler_forward(diff, t_span, y0,u_in=False, h=1.0):
     """ Function for Euler Forward numerical integration.
     Based on the syntax of scipy.integrate.solve_ivp
     
@@ -57,7 +57,7 @@ def fcn_euler_forward(diff, t_span, y0, h=1.0):
         # Index for current time instant
         idx = it.index
         # Model outputs at next time instant (Euler forward)
-        yint[:,idx+1] = y0 + diff(ti,y0)*h
+        yint[:,idx+1] = y0 + diff(ti,y0,u_in)*h
         # Update initial condition for next iteration
         y0 = yint[:,idx+1]
     return {'t':tint, 'y':yint}

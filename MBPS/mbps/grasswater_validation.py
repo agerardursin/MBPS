@@ -147,6 +147,13 @@ water = Water(tsim, dt_wtr, x0_wtr, p_wtr)
 # Initial disturbance
 d_grs['WAI'] = np.array([[0,1,2,3,4], [1.,]*5]).T
 
+u_grs = {'f_Gr': 0, 'f_Hr': 0, # [kgDM m-2 d-1]
+         'f_Hr1': 0.5, 'f_Hr2': 0.2*0.4, # [kgDM m-2 d-1]
+         'Hr_1': 100, 'Hr_2': 195,# [d]
+         'W_hr_1': 0.5*0.4, 'W_hr_2': 0.1*0.4}  # [kgDm]
+u_wtr = {'f_Irg': 0, 'WAI_scale': 1, 'DSD_lim': 1, 'fr_S': 0.2}  # [mm d-1]
+
+
 # Iterator
 # (stop at second-to-last element, and store index in Fortran order)
 it = np.nditer(tsim[:-1], flags=['f_index'])
@@ -157,10 +164,10 @@ for ti in it:
     tspan = (tsim[idx], tsim[idx+1])
     print('Integrating', tspan)
     # Controlled inputs
-    u_grs = {'f_Gr':0, 'f_Hr':0}   # [kgDM m-2 d-1]
-    u_wtr = {'f_Irg':0}            # [mm d-1]
+    # u_grs = {'f_Gr':0, 'f_Hr':0}   # [kgDM m-2 d-1]
+    # u_wtr = {'f_Irg':0}            # [mm d-1]
     # Run grass model
-    y_grs = grass.run(tspan, d_grs, u_grs)
+    y_grs = grass.run(tspan, d_grs, u_grs, True)
     # Retrieve grass model outputs for water model
     d_wtr['LAI'] = np.array([y_grs['t'], y_grs['LAI']])
     # Run water model    
@@ -175,9 +182,14 @@ WsDM, WgDM, LAI = grass.y['Ws']/0.4, grass.y['Wg']/0.4, grass.y['LAI']
 L1, L2, L3 = water.y['L1'], water.y['L2'], water.y['L3'],
 WAI = water.y['WAI']
 
+hrvst = grass.f['f_Hr']
+total_harvest = np.nancumsum(hrvst)/0.4
+ttl_hrvst = np.nansum(hrvst)/0.4
+print('Total harvest: ', ttl_hrvst)
+
 # ---- Plots
 plt.figure(1)
-plt.plot(t_grs, WsDM, label='WsDM')
+# plt.plot(t_grs, WsDM, label='WsDM')
 plt.plot(t_grs, WgDM, label='WgDM')
 # plt.plot(t_data, m_data,
 #           linestyle='None', marker='o', label='WgDM data')

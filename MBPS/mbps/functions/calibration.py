@@ -11,7 +11,7 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import numpy.linalg as LA
 
-def fcn_residuals(p0, fcn, t ,tdata, ydata, weights=None,
+def fcn_residuals(p0, fcn, t ,tdata, ydata, u_in1, u_in2, weights=None,
                   plot_progress=False, pause=0.02):
     '''Function to calculate the residuals y-ydata.
     
@@ -41,7 +41,7 @@ def fcn_residuals(p0, fcn, t ,tdata, ydata, weights=None,
         Value for abs(y-ydata) for each time instant.
     '''
     # Run function, and ensure 2-D arrays when 1-D arrays are given
-    yhat = np.c_[fcn(p0)]
+    yhat = np.c_[fcn(p0, u_in1, u_in2)]
     ydata = np.c_[ydata]
     # Define interpolation function based on full simulation-time array
     f_interp = interp1d(t, yhat, axis=0)

@@ -7,6 +7,7 @@ MSc Biosystems Engineering, WUR
 
 Class for soil water model
 """
+import warnings
 import numpy as np
 import sys
 sys.path.append('../mbps/classes/')
@@ -148,7 +149,7 @@ class Water(Module):
         for k in self.f_keys:
             self.f[k] = np.full((self.t.size,), np.nan)
     
-    def diff(self, _t, _x0):
+    def diff(self, _t, _x0, irr=False):
         # -- State variables (initial conditions)
         L1 = _x0[0]     # [mm] Water in soil layer 1
         L2 = _x0[1]     # [mm] Water in soil layer 2
@@ -191,7 +192,10 @@ class Water(Module):
         
         # -- Controlled inputs
         f_Irg = self.u['f_Irg']    # [mm d-1] Irrigation
-        
+        WAI_s = self.u['WAI_scale']
+        DSD_lim = self.u['DSD_lim']
+        fr_S = self.u['fr_S']
+
         # -- Supporting equations
         # [mm] Field capacities
         fc1, fc2, fc3 = theta_fc1*D1, theta_fc2*D2, theta_fc3*D3
@@ -199,7 +203,16 @@ class Water(Module):
         # [mm] Permanent wilting points
         pwp1, pwp2, pwp3 = theta_pwp1*D1, theta_pwp2*D2, theta_pwp3*D3  
         pwp_arr = np.array([pwp1, pwp2, pwp3])
-        
+
+        # Water availability index
+        WAI = (L_arr.sum()-pwp_arr.sum()) / (fc_arr.sum()-pwp_arr.sum())
+        WAI = max(WAI,0)
+
+        # Irrigation Strategy
+        if WAI < WAI_s*WAIc and DSD > DSD_lim and irr:
+            f_Irg = max(fr_S*S-_f_prc,0)
+
+
         # - Effective precipitation
         f_Ru = 0.0 # Runoff
         if _f_prc + f_Irg > 0.2*S:
@@ -223,12 +236,22 @@ class Water(Module):
         krt_arr[WAI_arr<WAIc] = WAI_arr[WAI_arr<WAIc]/WAIc
         # Root fractions (krf)
         krf_arr = np.array([krf1, krf2, krf3])
-        # Potential transpiration
+        # with warnings.catch_warnings():
+        #     warnings.filterwarnings('error')
+        #     try:
+                # Potential transpiration
         kTr = 1.0 - np.exp(-0.6*_LAI) # [-] Transpiration fraction from ETp
+            # except Warning as e:
+            #     print('water error found', e)
+            # try:
         Tp = kTr*ETp # [mm d-1] Potential transpiration
-        # Real transpiration (if Li > pwpi)
+            # except Warning as e:
+            #     print('water error found', e)
+            # try:
+                # Real transpiration (if Li > pwpi)
         f_Tr_arr = (L_arr>pwp_arr)*kra*krt_arr*krf_arr*Tp # [mm d-1]
-        
+            # except Warning as e:
+            #     print('water error found', e)
         # - Soil evaporation
         dt = self.dt
         Ep = min(ETp-Tp, ETp*(1-mlc)) # [mm d-1] Evaporation potential
@@ -250,14 +273,25 @@ class Water(Module):
         
         f_Dr_arr = np.array([f_Dr1,f_Dr2,f_Dr3])
         
-        # Water availability index
-        WAI = (L_arr.sum()-pwp_arr.sum()) / (fc_arr.sum()-pwp_arr.sum())
-        WAI = max(WAI,0)
+        # # Water availability index
+        # WAI = (L_arr.sum()-pwp_arr.sum()) / (fc_arr.sum()-pwp_arr.sum())
+        # WAI = max(WAI,0)
         
         # Differential equations [mm d-1]
+        # with warnings.catch_warnings():
+        #     warnings.filterwarnings('error')
+        #     try:
         dL1_dt = f_Pe - f_Ev - f_Tr_arr[0] - f_Dr_arr[0]
+            # except Warning as e:
+            #     print('water error found:', e)
+            # try:
         dL2_dt = f_Dr_arr[0] - f_Tr_arr[1] - f_Dr_arr[1]
+            # except Warning as e:
+            #     print('water error found:', e)
+            # try:
         dL3_dt = f_Dr_arr[1] - f_Tr_arr[2] - f_Dr_arr[2]
+            # except Warning as e:
+            #     print('water error found:', e)
         # dDSD_dt: slope in [d/d] to be multiplied by dt in fcn_euler_forward
         dDSD_dt = 1 - (f_Pe >= 1.5*Ep)*DSD
         
@@ -275,7 +309,7 @@ class Water(Module):
         
         return np.array([dL1_dt, dL2_dt, dL3_dt, dDSD_dt])
     
-    def output(self, tspan):
+    def output(self, tspan, uin=False):
         # Retrieve object properties
         dt = self.dt        # integration time step size
         diff = self.diff    # function with system of differential equations
@@ -290,7 +324,7 @@ class Water(Module):
 
         # Numerical integration
         y0 = np.array([L10, L20, L30, DSD0])
-        y_int = fcn_euler_forward(diff, tspan, y0, h=dt)
+        y_int = fcn_euler_forward(diff, tspan, y0, uin, h=dt)
         
         # Model outputs
         t = y_int['t']

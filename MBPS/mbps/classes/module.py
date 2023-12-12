@@ -28,7 +28,7 @@ class Module():
         # Logs of simulation results
         self.y = {}
     
-    def run(self,tspan,d=None,u=None):
+    def run(self,tspan,d=None,u=None,u_in=False):
         """ Run the attribute 'model' of Module instance
         
         Parameters
@@ -43,7 +43,7 @@ class Module():
         # Assign disturbances and control input
         self.d, self.u = d, u
         # Call model
-        y = self.output(tspan)
+        y = self.output(tspan,u_in)
         # Update model output logs
         # (if first simulation, initialize logs)
         if len(self.y) == 0:

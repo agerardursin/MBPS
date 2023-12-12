@@ -93,6 +93,12 @@ I_gl = data_weather.loc[t_ini:t_end, 'Q'].values  # [J cm-2 d-1] Global irr.
 T = T / 10  # [0.1 °C] to [°C] Environment temperature
 I0 = 0.45 * I_gl * 1E4 / dt_grs  # [J cm-2 d-1] to [J m-2 d-1] Global irr. to PAR
 
+sd_temp = np.std(T)
+sd_I0 = np.std(I0)
+
+noise_temp = np.random.normal(0,sd_temp,len(T))
+noise_I0 = np.random.normal(0,sd_I0,len(I0))
+
 d_grs = {'T': np.array([t_weather, T]).T,
          'I0': np.array([t_weather, I0]).T,
          }
@@ -140,6 +146,12 @@ f_prc[f_prc < 0.0] = 0  # correct data that contains -0.1 for very low values
 T = T / 10  # [0.1 °C] to [°C] Environment temperature
 I_glb = I_glb * 1E4 / dt_wtr  # [J cm-2 d-1] to [J m-2 d-1] Global irradiance
 f_prc = f_prc / 10 / dt_wtr  # [0.1 mm d-1] to [mm d-1] Precipitation
+
+sd_Iglb = np.std(I_glb)
+sd_prc = np.std(f_prc)
+
+noise_Iglb = np.random.normal(0,sd_Iglb,len(I_glb))
+noise_prc = np.random.normal(0,sd_prc,len(f_prc))
 
 d_wtr = {'I_glb': np.array([t_weather, I_glb]).T,
          'T': np.array([t_weather, T]).T,
@@ -247,20 +259,33 @@ rng = np.random.default_rng(seed=12)
 tsim = np.linspace(0, 365, 365+1) # [d] 
 
 # Monte Carlo simulations
-n_sim = 10 # number of simulations
+n_sim = 1000 # number of simulations
 
 # Initialize array of outputs, shape (len(tsim), len(n_sim))
 m_arr = np.full((tsim.size,n_sim), np.nan)
+m_arr1 = np.full((tsim.size,n_sim), np.nan)
+m_arr2 = np.full((tsim.size,n_sim), np.nan)
+m_arr3 = np.full((tsim.size,n_sim), np.nan)
 
 # Run simulations
 for j in range(n_sim):
-    
+    print('sim: ', j)
     alpha = rng.normal(p_hat[0], y_calib_acc['sd'][0])
     phi = rng.normal(p_hat[1], y_calib_acc['sd'][1])
     kcrop = rng.normal(p_hat[2], y_calib_acc['sd'][2])
     p0 = (alpha, phi, kcrop)
+    p01 = (p_hat[0], phi, kcrop)
+    p02 = (alpha, p_hat[1], kcrop)
+    p03 = (alpha, phi, p_hat[2])
+    # pool()
     m = fnc_y(p0)
+    m1 = fnc_y(p01)
+    m2 = fnc_y(p02)
+    m3 = fnc_y(p03)
     m_arr[:,j] = m
+    m_arr1[:, j] = m1
+    m_arr2[:, j] = m2
+    m_arr3[:, j] = m3
     
 # Plot results
 plt.figure(1)
@@ -273,6 +298,54 @@ ax2 = plt.gca()
 ax2 = fcn_plot_uncertainty(ax2, tsim, m_arr, ci=[0.50,0.68,0.95])
 # ax2.plot(tsim, np.full(tsim.shape,1.110), color='k')
 # ax2.plot(tsim, np.full(tsim.shape,1.420), color='k')
+plt.xlabel(r'$time\ [d]$')
+plt.ylabel('biomass ' + r'$[kgDM\ m^{-2}]$')
+
+# alpha unchanged
+plt.figure(3)
+plt.plot(tsim, m_arr1[:,0:12])
+plt.title(r'$\alpha\ unchanged$')
+plt.xlabel(r'$time\ [d]$')
+plt.ylabel('biomass ' + r'$[kgDM\ m^{-2}]$')
+
+plt.figure(4)
+ax3 = plt.gca()
+ax3 = fcn_plot_uncertainty(ax3, tsim, m_arr1, ci=[0.50,0.68,0.95])
+# ax2.plot(tsim, np.full(tsim.shape,1.110), color='k')
+# ax2.plot(tsim, np.full(tsim.shape,1.420), color='k')
+plt.title(r'$\alpha\ unchanged$')
+plt.xlabel(r'$time\ [d]$')
+plt.ylabel('biomass ' + r'$[kgDM\ m^{-2}]$')
+
+# phi unchanged
+plt.figure(5)
+plt.plot(tsim, m_arr2[:,0:12])
+plt.title(r'$\phi\ unchanged$')
+plt.xlabel(r'$time\ [d]$')
+plt.ylabel('biomass ' + r'$[kgDM\ m^{-2}]$')
+
+plt.figure(6)
+ax4 = plt.gca()
+ax4 = fcn_plot_uncertainty(ax4, tsim, m_arr2, ci=[0.50,0.68,0.95])
+# ax2.plot(tsim, np.full(tsim.shape,1.110), color='k')
+# ax2.plot(tsim, np.full(tsim.shape,1.420), color='k')
+plt.title(r'$\phi\ unchanged$')
+plt.xlabel(r'$time\ [d]$')
+plt.ylabel('biomass ' + r'$[kgDM\ m^{-2}]$')
+
+# kcrop unchanged
+plt.figure(7)
+plt.plot(tsim, m_arr3[:,0:12])
+plt.title(r'$k_{crop}\ unchanged$')
+plt.xlabel(r'$time\ [d]$')
+plt.ylabel('biomass ' + r'$[kgDM\ m^{-2}]$')
+
+plt.figure(8)
+ax5 = plt.gca()
+ax5 = fcn_plot_uncertainty(ax5, tsim, m_arr3, ci=[0.50,0.68,0.95])
+# ax2.plot(tsim, np.full(tsim.shape,1.110), color='k')
+# ax2.plot(tsim, np.full(tsim.shape,1.420), color='k')
+plt.title(r'$k_{crop}\ unchanged$')
 plt.xlabel(r'$time\ [d]$')
 plt.ylabel('biomass ' + r'$[kgDM\ m^{-2}]$')
 plt.show()

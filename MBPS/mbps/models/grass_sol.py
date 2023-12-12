@@ -9,6 +9,7 @@ Class for grass growth model from Grasim
 """
 import numpy as np
 import sys
+import warnings
 sys.path.append('../mbps/classes/')
 sys.path.append('../mbps/functions/')
 
@@ -131,12 +132,12 @@ class Grass(Module):
         for k in self.f_keys:
             self.f[k] = np.full((self.t.size,), np.nan)
     
-    def diff(self, _t, _x0):
+    def diff(self, _t, _x0,hrvst=False):
         # -- Initial conditions
         Ws, Wg = _x0[0], _x0[1]
 
         # Flag to enable harvest
-        hrvst = False
+        # hrvst = False
 
         # -- Physical constants
         theta = 12/44            # [-] CO2 to C (physical constant)
@@ -167,7 +168,13 @@ class Grass(Module):
         # -- Controlled inputs
         f_Gr = self.u['f_Gr']    # [kgC m-2 d-1] Graze
         f_Hr = self.u['f_Hr']    # [kgC m-2 d-1] Harvest
-        
+        f_Hr1 = self.u['f_Hr1']
+        f_Hr2 = self.u['f_Hr2']
+        d_Hr_1 = self.u['Hr_1']
+        d_Hr_2 = self.u['Hr_2']
+        W_Hr_1 = self.u['W_hr_1']
+        W_Hr_2 = self.u['W_hr_2']
+
         # -- Supporting equations
         # - Mass
         W = Ws + Wg             # [kgC m-2] total mass
@@ -178,13 +185,23 @@ class Grass(Module):
         DTb = Topt-Tmin
         TI = (DTmax/DTa * (DTmin/DTb)**(DTb/DTa))**z
         # - Photosynthesis
+        if Wg <=0 or np.isnan(Ws):
+            print('What?')
         LAI = a*Wg                      # [m2 m-2] Leaf area index
         if TI==0 and _I0==0:
             P = 0.0
         else:
             Pm = P0*TI                      # [kgCO2 m-2 d-1] Max photosynthesis
+            # with warnings.catch_warnings():
+            #     warnings.filterwarnings('error')
+            #     try:
             C1 = alpha*k*_I0/(1-m)          # [kgCO2 m-2 d-1]
+                # except Warning as e:
+                #     print('grass error found:', e)
+                # try:
             C2 = (C1+Pm)/(C1*np.exp(-k*LAI)+Pm) # [-]
+                # except Warning as e:
+                #     print('grass error found:', e)
             P = Pm/k*np.log(C2)             # [kgCO2 m-2 d-1] Photosynthesis rate
         # - Flows
         # Photosynthesis [kgC m-2 d-1]
@@ -198,20 +215,37 @@ class Grass(Module):
         # Senescence [kgC m-2 d-1]
         f_S = beta*Wg
         # Recycling (can solve Ws<0, remove for student version)
-        if Ws<1E-5:
+        if Ws<1E-5 and Wg > 0:
             f_R = 0.01*Wg
         else:
             f_R = 0
         # f_R = 0
 
-        # 135 is to ensure harvest happens at around the start of May since that is typical harvesting time
+        # 100 is to ensure harvest happens at around the start of May since that is typical harvesting time
         # 0.35 kg based on typical harvesting mass
-        if np.mod(_t,365) >= 135 and Wg > 0.4*0.4 and hrvst:
+        # The 0.4 multiplication comes from this being represented in terms of kgC m^-2 and not kgDM m^-2
+        if np.mod(_t,365) >= d_Hr_1 and Wg > W_Hr_1 and hrvst:
             # 0.2 kg is because on average in NL farmers harvest around 2000 kg/ha -> 0.2 kg/m^2
-            f_Hr = 0.3*0.4
+            f_Hr = f_Hr1*Wg#0.2*0.4
+        elif np.mod(_t, 365) >= d_Hr_2 and Wg > W_Hr_2 and hrvst:
+            # 0.2 kg is because on average in NL farmers harvest around 2000 kg/ha -> 0.2 kg/m^2
+            f_Hr = min(f_Hr2,Wg*0.9)
         else:
             f_Hr = 0
-
+        # if np.mod(_t,365) >= 100 and Wg > 0.75*0.4 and hrvst:
+        #     # 0.2 kg is because on average in NL farmers harvest around 2000 kg/ha -> 0.2 kg/m^2
+        #     f_Hr = 0.3*Wg#0.2*0.4
+        # elif np.mod(_t, 365) >= 150 and Wg > 0.6 * 0.4 and hrvst:
+        # # 0.2 kg is because on average in NL farmers harvest around 2000 kg/ha -> 0.2 kg/m^2
+        #     f_Hr = 0.4 * Wg
+        # elif np.mod(_t, 365) >= 195 and Wg > 0.45 * 0.4 and hrvst:
+        #     # 0.2 kg is because on average in NL farmers harvest around 2000 kg/ha -> 0.2 kg/m^2
+        #     f_Hr = 0.4*Wg
+        # elif np.mod(_t, 365) >= 215 and Wg > 0.3 * 0.4 and hrvst:
+        #     # 0.2 kg is because on average in NL farmers harvest around 2000 kg/ha -> 0.2 kg/m^2
+        #     f_Hr = 0.35*Wg
+        # else:
+        #     f_Hr = 0
 
         # -- Differential equations [kgC m-2 d-1]
         dWs_dt = f_P - f_SR - f_G - f_MR + f_R
@@ -230,7 +264,7 @@ class Grass(Module):
         
         return np.array([dWs_dt,dWg_dt])
     
-    def output(self, tspan):
+    def output(self, tspan, uin=False):
         # Retrieve object properties
         dt = self.dt        # integration time step size
         diff = self.diff    # function with system of differential equations
@@ -239,7 +273,7 @@ class Grass(Module):
         a = self.p['a']
         # Numerical integration
         y0 = np.array([Ws0,Wg0])
-        y_int = fcn_euler_forward(diff,tspan,y0,h=dt)
+        y_int = fcn_euler_forward(diff,tspan,y0,uin,h=dt)
         # Model results
         # assuming 0.4 kgC/kgDM (Mohtar et al. 1997, p. 1492)
         t = y_int['t']
